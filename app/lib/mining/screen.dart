@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'profile.dart';
+import 'jewelry.dart';
 import 'content.dart';
 import 'simulation.dart';
 import 'mining_world.dart';
@@ -387,6 +388,7 @@ class _MiningScreenState extends State<MiningScreen>
           ),
           Text('목표 ${money(game.stage.targetProfit)}'),
           Text('영구 누적 자산 ${money(profile.balance)}'),
+          Text('세공품 정산 ${money(game.pendingJewelryValue)}'),
           const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -465,6 +467,35 @@ class _MiningScreenState extends State<MiningScreen>
                     setState(() {});
                   },
           ),
+          const SizedBox(height: 12),
+          Text('제2공장 · 세공품 ${game.jewelry.pieces}개 · 마감 시 ${money(game.pendingJewelryValue)} 정산'),
+          Text('금 ${JewelryWorkshop.goldPerPiece.toStringAsFixed(0)} → 세공품 1개 · 제작비 ${money(JewelryWorkshop.laborCostPerPiece)}'),
+          const SizedBox(height: 8),
+          FrontierButton(
+            '세공품 제작',
+            onPressed: game.jewelry.canCraft(game.trade.available, game.cash)
+                ? () {
+                    game.craftJewelry();
+                    refresh(() {});
+                    setState(() {});
+                  }
+                : null,
+          ),
+          const SizedBox(height: 8),
+          for (final kind in [Upgrade.purity, Upgrade.artisan]) ...[
+            FrontierButton(
+              '${upgradeInfo(kind).$1} 강화 ${game.levels[kind]!}/${game.maxUpgradeLevel(kind)} · ${money(game.upgradePrice(kind))}',
+              onPressed: game.levels[kind]! >= game.maxUpgradeLevel(kind) ||
+                      game.cash < game.upgradePrice(kind)
+                  ? null
+                  : () {
+                      game.upgrade(kind);
+                      refresh(() {});
+                      setState(() {});
+                    },
+            ),
+            const SizedBox(height: 8),
+          ],
           const SizedBox(height: 12),
           FrontierButton(
             '금 판매 수량 배분',
@@ -1218,6 +1249,8 @@ class _MiningScreenState extends State<MiningScreen>
     Upgrade.workers => ('곡괭이', '광부의 채굴 속도가 35% 증가합니다.'),
     Upgrade.speed => ('수레 바퀴', '수레의 이동 속도가 30% 증가합니다.'),
     Upgrade.storage => ('공장 창고', '원석과 완제품 금의 보관 용량을 늘립니다.'),
+    Upgrade.purity => ('금 순도', '세공품의 금 가치를 높입니다.'),
+    Upgrade.artisan => ('장인 기술', '세공품의 부가가치를 높입니다.'),
   };
   Widget _upgradeCard(Upgrade u) {
     final info = upgradeInfo(u),
