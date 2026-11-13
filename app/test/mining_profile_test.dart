@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mine_path/mining/profile.dart';
+import 'package:mine_path/mining/content.dart';
 import 'package:mine_path/mining/simulation.dart';
 
 void main() {
@@ -29,4 +30,27 @@ void main() {
     expect(loaded.limit(Upgrade.speed), 2);
     expect(loaded.limit(Upgrade.storage), 1);
   });
+  test('a new round resets paid upgrades but keeps permanent caps', () {
+    final profile = MiningProfile()..collectRunProfit(5000);
+    expect(profile.purchaseResearch(Upgrade.speed), isTrue);
+    final first = MiningGame(
+      stage: stages.first,
+      unlockedUpgradeLevels: profile.research,
+    );
+    expect(first.maxUpgradeLevel(Upgrade.speed), 2);
+    expect(first.levels[Upgrade.speed], 0);
+    expect(first.upgrade(Upgrade.speed), isTrue);
+    expect(first.levels[Upgrade.speed], 1);
+
+    final second = MiningGame(
+      stage: stages.first,
+      unlockedUpgradeLevels: profile.research,
+    );
+    expect(second.maxUpgradeLevel(Upgrade.speed), 2);
+    expect(second.levels[Upgrade.speed], 0);
+    expect(second.maxUpgradeLevel(Upgrade.storage), 1);
+    expect(second.upgrade(Upgrade.storage), isTrue);
+    expect(second.upgrade(Upgrade.storage), isFalse);
+  });
+
 }
