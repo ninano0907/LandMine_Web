@@ -23,6 +23,7 @@ class MiningGame {
   final StageSpec stage;
   /// Permanent research caps supplied by the metagame. In-run levels reset to zero.
   final Map<Upgrade, int> unlockedUpgradeLevels;
+  final bool bridgeUnlocked, tunnelUnlocked;
   final MiningFactory factory = MiningFactory();
   final JewelryWorkshop jewelry = JewelryWorkshop();
   late final RailNetwork network;
@@ -46,6 +47,8 @@ class MiningGame {
     this.episode = handEra,
     int? seed,
     Map<Upgrade, int> unlockedUpgradeLevels = const {},
+    this.bridgeUnlocked = false,
+    this.tunnelUnlocked = false,
   }) : unlockedUpgradeLevels = Map.unmodifiable(unlockedUpgradeLevels) {
     network = RailNetwork(factory.gates);
     trade = TradeService(factory, episode.minerals.first.price);
@@ -261,9 +264,14 @@ class MiningGame {
     return mines.isEmpty ? point : mines.first.railPort;
   }
 
-  double trackPrice(int fromId, Point2 end) =>
-      20 +
-      trackNodes[fromId].point.distance(snapTrackEnd(end)) * stage.railCost;
+  double trackPrice(int fromId, Point2 end) {
+    final target = snapTrackEnd(end);
+    final from = trackNodes[fromId].point;
+    final crossing = terrain.crossings(from, target);
+    return 20 + from.distance(target) * stage.railCost +
+        (crossing.river ? 350 : 0) +
+        (crossing.mountain ? 500 : 0);
+  }
   bool trackWouldCross(int fromId, Point2 end) =>
       fromId < 0 ||
       fromId >= trackNodes.length ||
@@ -285,8 +293,12 @@ class MiningGame {
         trackNodes.any((n) => n.point.distance(end) < .015)) {
       return false;
     }
-    if (terrain.crossesObstacle(trackNodes[fromId].point, end)) {
-      message = '산과 강은 지금은 우회해야 해요. 다리·터널 건설 기능은 준비 중이에요.';
+    final crossing = terrain.crossings(trackNodes[fromId].point, end);
+    if ((crossing.river && !bridgeUnlocked) ||
+        (crossing.mountain && !tunnelUnlocked)) {
+      message = crossing.river && !bridgeUnlocked
+          ? '강을 건너려면 게임 밖에서 다리 기술을 해금하세요.'
+          : '산을 통과하려면 게임 밖에서 터널 기술을 해금하세요.';
       return false;
     }
     if (trackWouldCross(fromId, end)) {
