@@ -5,12 +5,14 @@ import 'simulation.dart';
 /// Permanent progress lives outside each individual mining run.
 class MiningProfile {
   double balance;
+  int unlockedStage;
   bool bridgeUnlocked;
   bool tunnelUnlocked;
   final Map<Upgrade, int> research;
 
   MiningProfile({
     this.balance = 0,
+    this.unlockedStage = 0,
     this.bridgeUnlocked = false,
     this.tunnelUnlocked = false,
     Map<Upgrade, int>? research,
@@ -42,6 +44,10 @@ class MiningProfile {
     return true;
   }
 
+  void unlockStageThrough(int index) {
+    if (index > unlockedStage) unlockedStage = index;
+  }
+
   /// Negative runs cannot erase previously earned permanent currency.
   void collectRunProfit(double profit) {
     if (profit.isFinite && profit > 0) balance += profit;
@@ -67,6 +73,7 @@ class MiningProfile {
   String encode() => jsonEncode({
         'version': 1,
         'balance': balance,
+        'unlockedStage': unlockedStage,
         'bridgeUnlocked': bridgeUnlocked,
         'tunnelUnlocked': tunnelUnlocked,
         'research': {
@@ -94,6 +101,9 @@ class MiningProfile {
           ? money.toDouble()
           : 0,
       research: limits,
+      unlockedStage: data['unlockedStage'] is int && data['unlockedStage'] >= 0
+          ? data['unlockedStage'] as int
+          : 0,
       bridgeUnlocked: data['bridgeUnlocked'] == true,
       tunnelUnlocked: data['tunnelUnlocked'] == true,
     );
