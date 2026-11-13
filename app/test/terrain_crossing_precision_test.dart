@@ -22,4 +22,38 @@ void main() {
     expect(terrain.crossings(p, p).river, isTrue);
     expect(terrain.crossesObstacle(p, p), isTrue);
   });
+
+  test('mountain crossing is detected even with clear endpoints', () {
+    for (var seed = 0; seed < 100; seed++) {
+      final terrain = TerrainMap.generate(seed);
+      for (final mountain in terrain.mountains) {
+        final from = Point2(mountain.center.x - mountain.radius - .01,
+            mountain.center.y);
+        final to = Point2(mountain.center.x + mountain.radius + .01,
+            mountain.center.y);
+        expect(terrain.isMountain(from), isFalse, reason: 'seed $seed');
+        expect(terrain.isMountain(to), isFalse, reason: 'seed $seed');
+        expect(terrain.crossings(from, to).mountain, isTrue,
+            reason: 'seed $seed');
+        expect(terrain.crossesObstacle(from, to), isTrue,
+            reason: 'seed $seed');
+      }
+    }
+  });
+
+  test('crossings report the correct obstacle type at its center', () {
+    for (var seed = 0; seed < 100; seed++) {
+      final terrain = TerrainMap.generate(seed);
+      final riverPoint = Point2(.5, terrain.riverCenterY(.5));
+      expect(terrain.crossings(riverPoint, riverPoint).river, isTrue,
+          reason: 'seed $seed');
+      expect(terrain.crossings(riverPoint, riverPoint).mountain, isFalse,
+          reason: 'seed $seed');
+      for (final mountain in terrain.mountains) {
+        final result = terrain.crossings(mountain.center, mountain.center);
+        expect(result.mountain, isTrue, reason: 'seed $seed');
+        expect(result.river, isFalse, reason: 'seed $seed');
+      }
+    }
+  });
 }
