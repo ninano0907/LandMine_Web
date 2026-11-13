@@ -24,7 +24,6 @@ class MiningWorld extends FlameGame {
   int playbackSpeed = 1;
   int? selected;
   double _refresh = 0;
-  final Set<int> _cartIds = {};
   final Set<int> _scoutIds = {};
   final Set<int> _storageIds = {};
   int _foundScouts = 0;
@@ -67,9 +66,6 @@ class MiningWorld extends FlameGame {
       if (_scoutIds.add(scout.id)) field.add(ScoutActor(this, scout));
     }
 
-    for (final cart in simulation.carts) {
-      if (_cartIds.add(cart.id)) field.add(CartActor(this, cart));
-    }
     for (final actor in field.children.whereType<WorkerActor>().toList()) {
       if (actor.index >= actor.deposit.workers) {
         _workerIds.remove('${actor.deposit.id}:${actor.index}');
@@ -408,6 +404,19 @@ class MineField extends PositionComponent with TapCallbacks, DragCallbacks {
         );
       }
     }
+    // Moving raw ore chips make active conveyor sections readable from above.
+    if (game.active) {
+      for (final route in game.rails.where((r) => r.ready)) {
+        final mine = game.deposit(route.depositId);
+        if (mine.stock <= 0) continue;
+        for (var i = 0; i < 4; i++) {
+          final t = ((game.elapsed * game.speed * .15 + i / 4) % 1.0);
+          final p = location(route.pointAt(1 - t)).toOffset();
+          canvas.drawCircle(p, 4, Paint()..color = const Color(0xFF9C876A));
+          canvas.drawCircle(p + const Offset(-1, -1), 1.4, Paint()..color = const Color(0xFFD9BA72));
+        }
+      }
+    }
     for (final node in game.trackNodes) {
       final p = location(node.point).toOffset();
       canvas.drawCircle(
@@ -608,47 +617,6 @@ class ScoutActor extends MineActor {
         ..color = const Color(0xFFE5D0A4)
         ..strokeWidth = 2,
     );
-  }
-}
-
-class CartActor extends MineActor {
-  final Cart cart;
-  CartActor(super.scene, this.cart);
-  @override
-  void update(double dt) {
-    super.update(dt);
-    final rail = scene.simulation.railFor(cart.depositId)!;
-    position = scene.field.location(rail.pointAt(cart.progress));
-    final a = scene.field.location(rail.pointAt(max(0, cart.progress - .01))),
-        b = scene.field.location(rail.pointAt(min(1, cart.progress + .01)));
-    angle = atan2(b.y - a.y, b.x - a.x) - pi / 2;
-  }
-
-  @override
-  void render(Canvas canvas) {
-    if (!scene.simulation.railFor(cart.depositId)!.ready) return;
-    final body = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(-8, -10, 16, 20),
-      const Radius.circular(3),
-    );
-    canvas.drawRRect(body, Paint()..color = const Color(0xFF4D4940));
-    canvas.drawRect(
-      const Rect.fromLTWH(-5, -7, 10, 14),
-      Paint()
-        ..color = cart.cargo > .001
-            ? const Color(0xFFBBA07A)
-            : const Color(0xFF858176),
-    );
-    for (final x in [-10.0, 8.0]) {
-      canvas.drawRect(
-        Rect.fromLTWH(x, -6, 3, 5),
-        Paint()..color = const Color(0xFF252E2D),
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(x, 3, 3, 5),
-        Paint()..color = const Color(0xFF252E2D),
-      );
-    }
   }
 }
 
