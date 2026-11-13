@@ -360,6 +360,45 @@ class MineField extends PositionComponent with TapCallbacks, DragCallbacks {
       Paint()..blendMode = BlendMode.clear,
     );
     canvas.restore();
+    // Simple overhead terrain: render above the underground geology mask.
+    final terrain = game.terrain;
+    final river = Path();
+    final riverBank = Path();
+    for (var i = 0; i <= 90; i++) {
+      final x = i / 90.0;
+      final y = terrain.riverCenterY(x);
+      final left = Offset(x * size.x, (y - .026) * size.y);
+      final bank = Offset(x * size.x, (y - .032) * size.y);
+      if (i == 0) {
+        river.moveTo(left.dx, left.dy);
+        riverBank.moveTo(bank.dx, bank.dy);
+      } else {
+        river.lineTo(left.dx, left.dy);
+        riverBank.lineTo(bank.dx, bank.dy);
+      }
+    }
+    for (var i = 90; i >= 0; i--) {
+      final x = i / 90.0;
+      final y = terrain.riverCenterY(x);
+      river.lineTo(x * size.x, (y + .026) * size.y);
+      riverBank.lineTo(x * size.x, (y + .032) * size.y);
+    }
+    river.close();
+    riverBank.close();
+    canvas.drawPath(riverBank, Paint()..color = const Color(0xFF6A806D));
+    canvas.drawPath(river, Paint()..color = const Color(0xFF4A8CA7));
+    for (final mountain in terrain.mountains) {
+      final c = location(mountain.center).toOffset();
+      final radius = mountain.radius * unit;
+      final area = Rect.fromCenter(
+        center: c, width: radius * 2.8, height: radius * 2);
+      canvas.drawOval(area.shift(const Offset(6, 8)),
+          Paint()..color = const Color(0xFF58624A));
+      canvas.drawOval(area,
+          Paint()..color = const Color(0xFF849071));
+      canvas.drawOval(area.deflate(radius * .36),
+          Paint()..color = const Color(0xFFB3B49B));
+    }
     // A small spoil rim marks each actual shovel excavation.
     for (final dig in game.surveys) {
       canvas.drawOval(
