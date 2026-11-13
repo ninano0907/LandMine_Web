@@ -487,25 +487,24 @@ class _MiningScreenState extends State<MiningScreen>
             '운반 수레 · 50 / 100 / 200',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
-          if (game.carts.isEmpty)
-            ...game.carts.map(
-              (cart) => ListTile(
-                title: Text('수레 ${cart.id + 1} · 갱도 ${cart.depositId + 1}'),
-                subtitle: Text(
-                  'Lv.${cart.level} · ${cart.status} · ${cart.cargo.toStringAsFixed(0)} / ${cart.capacity.round()}',
-                ),
-                trailing: FrontierButton(
-                  cart.canUpgrade ? '강화 ${money(cart.upgradeCost)}' : '최대',
-                  onPressed: !cart.canUpgrade || game.cash < cart.upgradeCost
-                      ? null
-                      : () {
-                          game.upgradeCart(cart.id);
-                          refresh(() {});
-                          setState(() {});
-                        },
-                ),
+          ...game.carts.map(
+            (cart) => ListTile(
+              title: Text('수레 ${cart.id + 1} · 갱도 ${cart.depositId + 1}'),
+              subtitle: Text(
+                'Lv.${cart.level} · ${cart.status} · ${cart.cargo.toStringAsFixed(0)} / ${cart.capacity.round()}',
+              ),
+              trailing: FrontierButton(
+                cart.canUpgrade ? '강화 ${money(cart.upgradeCost)}' : '최대',
+                onPressed: !cart.canUpgrade || game.cash < cart.upgradeCost
+                    ? null
+                    : () {
+                        game.upgradeCart(cart.id);
+                        refresh(() {});
+                        setState(() {});
+                      },
               ),
             ),
+          ),
           FrontierButton(
             '수레 속도 강화 ${money(game.upgradePrice(Upgrade.speed))}',
             onPressed:
@@ -805,40 +804,46 @@ class _MiningScreenState extends State<MiningScreen>
         children: [
           SizedBox(
             width: 103,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                InkWell(
-                  onTap: showMenu,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.settings, size: 17, color: hudInk),
-                      const SizedBox(width: 5),
-                      Text(
-                        '1편 · ${game.stage.number}광구',
-                        style: const TextStyle(fontSize: 10, color: hudInk),
-                      ),
-                    ],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  InkWell(
+                    onTap: showMenu,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.settings, size: 17, color: hudInk),
+                        const SizedBox(width: 5),
+                        Text(
+                          '1편 · ${game.stage.number}광구',
+                          style: const TextStyle(fontSize: 10, color: hudInk),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  money(game.cash),
-                  style: const TextStyle(
-                    fontSize: 27,
-                    color: hudInk,
-                    fontFamily: 'serif',
-                    fontWeight: FontWeight.w900,
+                  Text(
+                    money(game.cash),
+                    style: const TextStyle(
+                      fontSize: 27,
+                      color: hudInk,
+                      fontFamily: 'serif',
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                Text(
-                  '순익 ${money(game.profit)}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF7B694F),
+                  Text(
+                    '순익 ${money(game.profit)}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF7B694F),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Expanded(
