@@ -56,4 +56,14 @@ void main() {
       }
     }
   });
+  test('factory center stays clear of generated terrain', () {
+    for (var seed = 0; seed < 100; seed++) {
+      final terrain = TerrainMap.generate(seed);
+      const center = MapGeometry.factoryCenter;
+      expect(terrain.blocked(center), isFalse, reason: 'seed $seed');
+      final crossing = terrain.crossings(center, center);
+      expect(crossing.river, isFalse, reason: 'seed $seed');
+      expect(crossing.mountain, isFalse, reason: 'seed $seed');
+    }
+  });
 }
