@@ -10,7 +10,7 @@ class MiningProfile {
   MiningProfile({this.balance = 0, Map<Upgrade, int>? research})
       : research = {
           for (final upgrade in Upgrade.values)
-            upgrade: (research?[upgrade] ?? 1).clamp(1, _cap(upgrade)),
+            upgrade: (research?[upgrade] ?? 1).clamp(1, _cap(upgrade)).toInt(),
         };
 
   static int _cap(Upgrade upgrade) =>
