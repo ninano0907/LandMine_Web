@@ -414,6 +414,7 @@ class MineField extends PositionComponent with TapCallbacks, DragCallbacks {
       );
     }
     for (final rail in game.trackSegments) {
+      final crossing = game.terrain.crossings(rail.start, rail.end);
       final a = location(rail.start).toOffset();
       final b = Offset.lerp(
         a,
@@ -438,8 +439,12 @@ class MineField extends PositionComponent with TapCallbacks, DragCallbacks {
           a + perp * side.toDouble(),
           b + perp * side.toDouble(),
           Paint()
-            ..color = const Color(0xFFD7D8CD)
-            ..strokeWidth = 2,
+            ..color = crossing.river
+                ? const Color(0xFFE3BF7E)
+                : crossing.mountain
+                    ? const Color(0xFF3F4342)
+                    : const Color(0xFFD7D8CD)
+            ..strokeWidth = crossing.river || crossing.mountain ? 3 : 2,
         );
       }
     }
