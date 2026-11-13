@@ -86,7 +86,7 @@ class MiningGame {
   int get searchingScouts => scouts.where((s) => !s.found).length;
   double get surveyRadius => episode.scanRadius;
   double get capacity => 50;
-  double get speed => episode.cartSpeed * (1 + levels[Upgrade.speed]! * .3);
+  double get speed => 1.0 + levels[Upgrade.speed]! * 1.0;
   double get workerRate =>
       episode.workerRate * (1 + levels[Upgrade.workers]! * .35);
   double get stored => factory.gold.amount;
@@ -285,7 +285,7 @@ class MiningGame {
     final node = network.extend(fromId, end);
     if (linked != null) {
       network.attachMine(linked.id, node);
-      carts.add(Cart(linked.id, id: carts.length));
+      // A linked mine feeds the shared conveyor directly.
     }
     return true;
   }
@@ -295,16 +295,8 @@ class MiningGame {
   bool connect(int id) =>
       deposit(id).discovered &&
       buildTrack(bestGateFor(id), deposit(id).railPort);
-  bool buyCart(int id) {
-    if (!canCommand ||
-        railFor(id) == null ||
-        carts.where((c) => c.depositId == id).length >= 4 ||
-        !_pay(120)) {
-      return false;
-    }
-    carts.add(Cart(id, id: carts.length));
-    return true;
-  }
+  // Kept for legacy callers. Mining transport now uses conveyors only.
+  bool buyCart(int id) => false;
 
   bool upgradeMineStorage(int id) {
     final storage = deposit(id).storage;
@@ -313,14 +305,10 @@ class MiningGame {
     return true;
   }
 
-  bool upgradeCart(int id) {
-    final cart = carts.firstWhere((c) => c.id == id);
-    if (!cart.canUpgrade || !_pay(cart.upgradeCost)) return false;
-    cart.upgrade();
-    return true;
-  }
+  bool upgradeCart(int id) => false;
 
-  int maxUpgradeLevel(Upgrade kind) => kind == Upgrade.processing ? 3 : 4;
+  int maxUpgradeLevel(Upgrade kind) =>
+      kind == Upgrade.processing || kind == Upgrade.speed ? 3 : 4;
   double upgradePrice(Upgrade kind) => switch (kind) {
     Upgrade.workers => 180.0 + levels[kind]! * 150,
     Upgrade.speed => 180.0 + levels[kind]! * 140,
