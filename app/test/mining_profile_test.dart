@@ -90,6 +90,9 @@ void main() {
     final restored = MiningProfile.decode(profile.encode());
     expect(restored.unlockedStage, 3);
     expect(MiningProfile.decode('{}').unlockedStage, 0);
+    profile.unlockStageThrough(999);
+    expect(profile.unlockedStage, stages.length - 1);
+    expect(MiningProfile.decode('{"unlockedStage":999}').unlockedStage, stages.length - 1);
   });
 
   test('invalid saved data recovers without crashing startup', () {
