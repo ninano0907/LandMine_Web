@@ -33,8 +33,11 @@ class TerrainMap {
           .10 + random.nextDouble() * .80,
         );
         final mountain = Mountain(center, .095 + random.nextDouble() * .05);
+        // Keep the full mountain footprint clear of the curved river.
+        // The sinusoid cannot vary by more than 2 * riverBend.
+        final riverClearance = (center.y - terrain.riverCenterY(center.x)).abs();
         if (center.distance(MapGeometry.factoryCenter) < .39 ||
-            terrain.isRiver(center) ||
+            riverClearance < mountain.radius + .026 + 2 * terrain.riverBend ||
             terrain.mountains.any((m) =>
               center.distance(m.center) < mountain.radius + m.radius + .04)) {
           continue;
