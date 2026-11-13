@@ -92,4 +92,10 @@ void main() {
     expect(MiningProfile.decode('{}').unlockedStage, 0);
   });
 
+  test('invalid saved data recovers without crashing startup', () {
+    expect(MiningProfile.decode('invalid json').balance, 0);
+    expect(MiningProfile.decode('null').unlockedStage, 0);
+    expect(MiningProfile.decode('[]').bridgeUnlocked, isFalse);
+  });
+
 }
