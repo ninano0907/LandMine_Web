@@ -3,6 +3,8 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'profile.dart';
 import 'content.dart';
 import 'simulation.dart';
 import 'mining_world.dart';
@@ -21,6 +23,38 @@ class _MiningScreenState extends State<MiningScreen>
     with WidgetsBindingObserver {
   late MiningGame game;
   late MiningWorld scene;
+  MiningProfile profile = MiningProfile();
+  bool profileLoaded = false;
+  static const _profileKey = 'landmine_profile_v1';
+
+  Future<void> _loadProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_profileKey);
+      if (!mounted) return;
+      setState(() {
+        if (saved != null) profile = MiningProfile.decode(saved);
+        profileLoaded = true;
+        if (game.elapsed == 0 && game.spending == 0) {
+          startStage(stageIndex, rebuild: false);
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => profileLoaded = true);
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_profileKey, profile.encode());
+  }
+
+  void _research(Upgrade kind) {
+    if (!profileLoaded || !profile.purchaseResearch(kind)) return;
+    setState(() {});
+    _saveProfile();
+  }
+
   int stageIndex = 0, unlocked = 0, speed = 1;
   int? selected;
   String tool = 'inspect', mineralId = 'gold', townSection = 'workshop';
@@ -115,6 +149,7 @@ class _MiningScreenState extends State<MiningScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     startStage(0, rebuild: false);
+    _loadProfile();
   }
 
   void startStage(int index, {bool rebuild = true}) {
@@ -129,7 +164,7 @@ class _MiningScreenState extends State<MiningScreen>
       townOpen = false;
       tool = 'inspect';
       speed = 1;
-      game = MiningGame(stage: stages[index]);
+      game = MiningGame(stage: stages[index], unlockedUpgradeLevels: profile.research);
       mineralId = game.episode.minerals.first.id;
       scene = MiningWorld(
         simulation: game,
@@ -320,6 +355,10 @@ class _MiningScreenState extends State<MiningScreen>
   Future<void> showResult() async {
     if (resultShown) return;
     resultShown = true;
+    if (profileLoaded) {
+      profile.collectRunProfit(game.profit);
+      await _saveProfile();
+    }
     if (game.cleared) {
       unlocked = max(unlocked, min(stages.length - 1, stageIndex + 1));
     }
@@ -347,6 +386,7 @@ class _MiningScreenState extends State<MiningScreen>
             style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
           ),
           Text('목표 ${money(game.stage.targetProfit)}'),
+          Text('영구 누적 자산 ${money(profile.balance)}'),
           const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -416,7 +456,7 @@ class _MiningScreenState extends State<MiningScreen>
           FrontierButton(
             '공장 창고 증설 ${money(game.upgradePrice(Upgrade.storage))}',
             onPressed:
-                game.levels[Upgrade.storage]! >= 4 ||
+                game.levels[Upgrade.storage]! >= game.maxUpgradeLevel(Upgrade.storage) ||
                     game.cash < game.upgradePrice(Upgrade.storage)
                 ? null
                 : () {
@@ -1297,7 +1337,28 @@ class _MiningScreenState extends State<MiningScreen>
             ],
           ),
           Expanded(
-            child: townSection == 'stages'
+            child: townSection == 'research'
+                ? SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        Text('누적 자산 ${money(profile.balance)}',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        const Text('연구한 최대 레벨은 다음 게임부터 적용돼요.'),
+                        for (final u in Upgrade.values)
+                          ListTile(
+                            title: Text(upgradeInfo(u).$1),
+                            subtitle: Text('영구 해금 ${profile.limit(u)} / ${profile.maxLimit(u)}'),
+                            trailing: FrontierButton(
+                              !profile.canResearch(u) ? '최대 해금' : money(profile.researchCost(u)),
+                              onPressed: !profileLoaded || !profile.canResearch(u) ||
+                                      profile.balance < profile.researchCost(u)
+                                  ? null : () => _research(u),
+                            ),
+                          ),
+                      ],
+                    ),
+                  )
+                : townSection == 'stages'
                 ? SingleChildScrollView(
                     child: Column(
                       children: stages
@@ -1422,6 +1483,7 @@ class _MiningScreenState extends State<MiningScreen>
                 ('stable', '수레 공방'),
                 ('storage', '창고'),
                 ('stages', '광구'),
+                ('research', '기술 연구'),
               ].map(
                 (section) => Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
