@@ -6,6 +6,7 @@ import 'entities.dart';
 import 'rail_network.dart';
 import 'systems.dart';
 import 'jewelry.dart';
+import 'terrain.dart';
 export 'geometry.dart';
 export 'economy.dart';
 export 'entities.dart';
@@ -25,6 +26,7 @@ class MiningGame {
   final MiningFactory factory = MiningFactory();
   final JewelryWorkshop jewelry = JewelryWorkshop();
   late final RailNetwork network;
+  late final TerrainMap terrain;
   late final TradeService trade;
   final ProductionSystem production = ProductionSystem();
   final TransportSystem transport = TransportSystem();
@@ -50,6 +52,7 @@ class MiningGame {
     // A new map every round, while explicit seeds keep tests reproducible.
     final mapSeed = seed ?? Random().nextInt(1 << 31);
     final random = Random(mapSeed);
+    terrain = TerrainMap.generate(mapSeed);
     _random = Random(mapSeed ^ 719);
     deposits = [];
     for (var i = 0; i < stage.deposits; i++) {
@@ -62,6 +65,7 @@ class MiningGame {
           .08 + random.nextDouble() * .84,
         );
         if (entrance.distance(candidate) < .31 ||
+            terrain.blocked(candidate) ||
             deposits.any((d) => d.point.distance(candidate) < .16)) {
           continue;
         }
@@ -279,6 +283,10 @@ class MiningGame {
     final end = snapTrackEnd(target);
     if (trackNodes[fromId].point.distance(end) < .025 ||
         trackNodes.any((n) => n.point.distance(end) < .015)) {
+      return false;
+    }
+    if (terrain.crossesObstacle(trackNodes[fromId].point, end)) {
+      message = '산과 강은 지금은 우회해야 해요. 다리·터널 건설 기능은 준비 중이에요.';
       return false;
     }
     if (trackWouldCross(fromId, end)) {
