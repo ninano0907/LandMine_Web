@@ -53,4 +53,31 @@ void main() {
     expect(second.upgrade(Upgrade.storage), isFalse);
   });
 
+  test('bridge and tunnel research spends permanent money and survives reload', () {
+    final profile = MiningProfile()..collectRunProfit(6000);
+    final opening = profile.balance;
+    expect(profile.unlockBridge(), isTrue);
+    expect(profile.unlockBridge(), isFalse);
+    expect(profile.unlockTunnel(), isTrue);
+    expect(profile.balance,
+        closeTo(opening - MiningProfile.bridgeResearchCost -
+            MiningProfile.tunnelResearchCost, 0.001));
+
+    final restored = MiningProfile.decode(profile.encode());
+    expect(restored.bridgeUnlocked, isTrue);
+    expect(restored.tunnelUnlocked, isTrue);
+    expect(restored.unlockBridge(), isFalse);
+    expect(restored.unlockTunnel(), isFalse);
+
+    final nextRound = MiningGame(
+      stage: stages.first,
+      bridgeUnlocked: restored.bridgeUnlocked,
+      tunnelUnlocked: restored.tunnelUnlocked,
+      unlockedUpgradeLevels: restored.research,
+    );
+    expect(nextRound.bridgeUnlocked, isTrue);
+    expect(nextRound.tunnelUnlocked, isTrue);
+    expect(nextRound.levels[Upgrade.speed], 0);
+  });
+
 }
