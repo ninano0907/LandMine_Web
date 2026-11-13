@@ -56,6 +56,14 @@ class _MiningScreenState extends State<MiningScreen>
     _saveProfile();
   }
 
+  void _unlockTerrain(bool bridge) {
+    if (!profileLoaded) return;
+    final ok = bridge ? profile.unlockBridge() : profile.unlockTunnel();
+    if (!ok) return;
+    setState(() {});
+    _saveProfile();
+  }
+
   int stageIndex = 0, unlocked = 0, speed = 1;
   int? selected;
   String tool = 'inspect', mineralId = 'gold', townSection = 'workshop';
@@ -165,7 +173,12 @@ class _MiningScreenState extends State<MiningScreen>
       townOpen = false;
       tool = 'inspect';
       speed = 1;
-      game = MiningGame(stage: stages[index], unlockedUpgradeLevels: profile.research);
+      game = MiningGame(
+        stage: stages[index],
+        unlockedUpgradeLevels: profile.research,
+        bridgeUnlocked: profile.bridgeUnlocked,
+        tunnelUnlocked: profile.tunnelUnlocked,
+      );
       mineralId = game.episode.minerals.first.id;
       scene = MiningWorld(
         simulation: game,
@@ -1377,6 +1390,26 @@ class _MiningScreenState extends State<MiningScreen>
                         Text('누적 자산 ${money(profile.balance)}',
                             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                         const Text('연구한 최대 레벨은 다음 게임부터 적용돼요.'),
+                        ListTile(
+                          title: const Text('다리 기술'),
+                          subtitle: const Text('강을 건너는 컨베이어 설치 가능 · 다음 게임부터 적용'),
+                          trailing: FrontierButton(
+                            profile.bridgeUnlocked ? '해금 완료' : money(MiningProfile.bridgeResearchCost),
+                            onPressed: !profileLoaded || profile.bridgeUnlocked ||
+                                    profile.balance < MiningProfile.bridgeResearchCost
+                                ? null : () => _unlockTerrain(true),
+                          ),
+                        ),
+                        ListTile(
+                          title: const Text('터널 기술'),
+                          subtitle: const Text('산을 통과하는 컨베이어 설치 가능 · 다음 게임부터 적용'),
+                          trailing: FrontierButton(
+                            profile.tunnelUnlocked ? '해금 완료' : money(MiningProfile.tunnelResearchCost),
+                            onPressed: !profileLoaded || profile.tunnelUnlocked ||
+                                    profile.balance < MiningProfile.tunnelResearchCost
+                                ? null : () => _unlockTerrain(false),
+                          ),
+                        ),
                         for (final u in Upgrade.values)
                           ListTile(
                             title: Text(upgradeInfo(u).$1),
