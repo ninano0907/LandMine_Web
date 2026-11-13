@@ -83,7 +83,12 @@ class MiningProfile {
       });
 
   factory MiningProfile.decode(String raw) {
-    final data = jsonDecode(raw);
+    dynamic data;
+    try {
+      data = jsonDecode(raw);
+    } on FormatException {
+      return MiningProfile();
+    }
     if (data is! Map) return MiningProfile();
     final stored = data['research'];
     final limits = <Upgrade, int>{};
