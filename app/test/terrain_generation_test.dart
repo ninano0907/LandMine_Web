@@ -35,4 +35,25 @@ void main() {
     expect(terrain.crossesObstacle(Point2(x, y - .09), Point2(x, y + .09)),
         isTrue);
   });
+  test('bridge and tunnel research gates terrain crossing', () {
+    final t = TerrainMap.generate(42);
+    final x = .04;
+    final y = t.riverCenterY(x);
+    final game = MiningGame(stage: stages.first, seed: 42);
+    expect(game.bridgeUnlocked, isFalse);
+    expect(game.tunnelUnlocked, isFalse);
+    final upgraded = MiningGame(
+      stage: stages.first,
+      seed: 42,
+      bridgeUnlocked: true,
+      tunnelUnlocked: true,
+    );
+    expect(upgraded.bridgeUnlocked, isTrue);
+    expect(upgraded.tunnelUnlocked, isTrue);
+    expect(
+      t.crossings(Point2(x, y - .09), Point2(x, y + .09)).river,
+      isTrue,
+    );
+  });
+
 }
