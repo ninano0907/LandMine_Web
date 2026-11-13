@@ -53,6 +53,20 @@ class TerrainMap {
   bool isMountain(Point2 p) => mountains.any((m) => m.contains(p));
   bool blocked(Point2 p) => isRiver(p) || isMountain(p);
 
+  /// Counts how many samples of a new conveyor cross each obstacle type.
+  /// A bridge permits river sections and a tunnel permits mountain sections.
+  ({bool river, bool mountain}) crossings(Point2 a, Point2 b) {
+    final steps = max(24, (a.distance(b) * 200).ceil());
+    var river = false;
+    var mountain = false;
+    for (var i = 0; i <= steps; i++) {
+      final point = a.towards(b, i / steps);
+      river = river || isRiver(point);
+      mountain = mountain || isMountain(point);
+    }
+    return (river: river, mountain: mountain);
+  }
+
   /// Segment sampling is sufficient for the first playable terrain iteration.
   bool crossesObstacle(Point2 a, Point2 b) {
     final steps = max(12, (a.distance(b) * 100).ceil());
