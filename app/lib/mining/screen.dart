@@ -36,7 +36,8 @@ class _MiningScreenState extends State<MiningScreen>
       setState(() {
         if (saved != null) profile = MiningProfile.decode(saved);
         profileLoaded = true;
-        if (game.elapsed == 0 && game.spending == 0) {
+        unlocked = profile.unlockedStage.clamp(0, stages.length - 1).toInt();
+        if (game.elapsed == 0 && game.spending == 0 && !townOpen) {
           startStage(stageIndex, rebuild: false);
         }
       });
@@ -369,12 +370,13 @@ class _MiningScreenState extends State<MiningScreen>
   Future<void> showResult() async {
     if (resultShown) return;
     resultShown = true;
-    if (profileLoaded) {
-      profile.collectRunProfit(game.profit);
-      await _saveProfile();
-    }
     if (game.cleared) {
       unlocked = max(unlocked, min(stages.length - 1, stageIndex + 1));
+    }
+    if (profileLoaded) {
+      profile.collectRunProfit(game.profit);
+      profile.unlockStageThrough(unlocked);
+      await _saveProfile();
     }
     final next = await panel<bool>(
       (context) => Column(
