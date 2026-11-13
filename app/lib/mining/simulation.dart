@@ -19,6 +19,8 @@ class MiningGame {
   static const scoutCost = 100.0, scanCost = 12.0, workerCost = 75.0;
   final EpisodeSpec episode;
   final StageSpec stage;
+  /// Permanent research caps supplied by the metagame. In-run levels reset to zero.
+  final Map<Upgrade, int> unlockedUpgradeLevels;
   final MiningFactory factory = MiningFactory();
   late final RailNetwork network;
   late final TradeService trade;
@@ -35,7 +37,12 @@ class MiningGame {
   bool paused = false, finished = false;
   int saleMarket = 0;
   String message = '탐사인을 고용해 원석을 찾고, 공장에서 가공한 금을 중개인에게 판매하세요.';
-  MiningGame({required this.stage, this.episode = handEra, int? seed}) {
+  MiningGame({
+    required this.stage,
+    this.episode = handEra,
+    int? seed,
+    Map<Upgrade, int> unlockedUpgradeLevels = const {},
+  }) : unlockedUpgradeLevels = Map.unmodifiable(unlockedUpgradeLevels) {
     network = RailNetwork(factory.gates);
     trade = TradeService(factory, episode.minerals.first.price);
     final random = Random(seed ?? stage.seed);
@@ -307,8 +314,14 @@ class MiningGame {
 
   bool upgradeCart(int id) => false;
 
-  int maxUpgradeLevel(Upgrade kind) =>
+  int absoluteMaxUpgradeLevel(Upgrade kind) =>
       kind == Upgrade.speed ? 2 : kind == Upgrade.processing ? 3 : 4;
+
+  /// Unresearched upgrades cannot be purchased during this run.
+  /// Legacy games without research data retain their previous upgrade caps.
+  int maxUpgradeLevel(Upgrade kind) =>
+      (unlockedUpgradeLevels[kind] ?? absoluteMaxUpgradeLevel(kind))
+          .clamp(0, absoluteMaxUpgradeLevel(kind));
   double upgradePrice(Upgrade kind) => switch (kind) {
     Upgrade.workers => 180.0 + levels[kind]! * 150,
     Upgrade.speed => 180.0 + levels[kind]! * 140,
