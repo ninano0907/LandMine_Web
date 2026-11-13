@@ -414,7 +414,6 @@ class MineField extends PositionComponent with TapCallbacks, DragCallbacks {
       );
     }
     for (final rail in game.trackSegments) {
-      final crossing = game.terrain.crossings(rail.start, rail.end);
       final a = location(rail.start).toOffset();
       final b = Offset.lerp(
         a,
@@ -434,18 +433,29 @@ class MineField extends PositionComponent with TapCallbacks, DragCallbacks {
             ..strokeWidth = 3,
         );
       }
-      for (final side in [-1, 1]) {
-        canvas.drawLine(
-          a + perp * side.toDouble(),
-          b + perp * side.toDouble(),
-          Paint()
-            ..color = crossing.river
-                ? const Color(0xFFE3BF7E)
-                : crossing.mountain
-                    ? const Color(0xFF3F4342)
-                    : const Color(0xFFD7D8CD)
-            ..strokeWidth = crossing.river || crossing.mountain ? 3 : 2,
-        );
+      // Only the actual river or mountain span is highlighted, not the
+      // entire conveyor. This keeps long routes visually uncluttered.
+      final coloredSteps = max(12, (delta.distance / 8).ceil());
+      for (var i = 0; i < coloredSteps; i++) {
+        final t0 = rail.construction * i / coloredSteps;
+        final t1 = rail.construction * (i + 1) / coloredSteps;
+        final mid = rail.start.towards(rail.end, (t0 + t1) / 2);
+        final color = game.terrain.isRiver(mid)
+            ? const Color(0xFFE3BF7E)
+            : game.terrain.isMountain(mid)
+                ? const Color(0xFF3F4342)
+                : const Color(0xFFD7D8CD);
+        final start = Offset.lerp(a, b, i / coloredSteps)!;
+        final end = Offset.lerp(a, b, (i + 1) / coloredSteps)!;
+        for (final side in [-1, 1]) {
+          canvas.drawLine(
+            start + perp * side.toDouble(),
+            end + perp * side.toDouble(),
+            Paint()
+              ..color = color
+              ..strokeWidth = color == const Color(0xFFD7D8CD) ? 2 : 3,
+          );
+        }
       }
     }
     // Moving raw ore chips make active conveyor sections readable from above.
