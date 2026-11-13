@@ -321,7 +321,7 @@ class MiningGame {
   /// Legacy games without research data retain their previous upgrade caps.
   int maxUpgradeLevel(Upgrade kind) =>
       (unlockedUpgradeLevels[kind] ?? absoluteMaxUpgradeLevel(kind))
-          .clamp(0, absoluteMaxUpgradeLevel(kind));
+          .clamp(0, absoluteMaxUpgradeLevel(kind)).toInt();
   double upgradePrice(Upgrade kind) => switch (kind) {
     Upgrade.workers => 180.0 + levels[kind]! * 150,
     Upgrade.speed => 180.0 + levels[kind]! * 140,
