@@ -95,6 +95,18 @@ void main() {
     expect(MiningProfile.decode('{"unlockedStage":999}').unlockedStage, stages.length - 1);
   });
 
+  test('direct profile construction clamps invalid persistent values', () {
+    final negative = MiningProfile(balance: -50, unlockedStage: -2);
+    expect(negative.balance, 0);
+    expect(negative.unlockedStage, 0);
+
+    final oversized = MiningProfile(balance: double.nan, unlockedStage: 999);
+    expect(oversized.balance, 0);
+    expect(oversized.unlockedStage, stages.length - 1);
+    expect(MiningProfile.decode(oversized.encode()).unlockedStage,
+        stages.length - 1);
+  });
+
   test('invalid saved data recovers without crashing startup', () {
     expect(MiningProfile.decode('invalid json').balance, 0);
     expect(MiningProfile.decode('null').unlockedStage, 0);
