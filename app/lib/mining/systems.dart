@@ -26,66 +26,49 @@ class ProductionSystem {
   }
 }
 
+/// Continuous conveyor delivery. Shared segments have a single throughput
+/// budget, so connecting more mines cannot duplicate belt capacity.
 class TransportSystem {
+  static const double baseOrePerSecond = 6.0;
+
   void update(
-    List<Cart> carts,
+    List<Cart> unusedCarts,
     List<MineShaft> mines,
     RailNetwork network,
     MiningFactory factory,
     double dt,
     double speed,
   ) {
-    for (final cart in carts) {
-      final route = network.routeFor(cart.depositId);
-      if (route == null || !route.ready) continue;
-      final mine = mines.firstWhere((m) => m.id == cart.depositId),
-          gate = factory.gates[route.gateId];
-      switch (cart.state) {
-        case CartState.waitingForRoute:
-          cart.state = CartState.outbound;
-        case CartState.outbound:
-          cart.progress = min(
-            1,
-            cart.progress + dt * speed / max(.01, route.length),
-          );
-          if (cart.progress >= 1) {
-            cart.state = CartState.loading;
-            cart.loadWait = 0;
-          }
-        case CartState.loading:
-          final loadBudget = dt * GameBalance.cartLoadPerSecond;
-          final loaded = mine.storage.ore.transferTo(cart.hold, loadBudget);
-          if (loaded >= loadBudget - 1e-7) {
-            cart.loadWait = 0;
-          } else if (cart.cargo > 0) {
-            cart.loadWait += dt;
-          }
-          if (cart.hold.free < 1e-7 ||
-              (cart.cargo > 0 &&
-                  (cart.loadWait >= GameBalance.partialLoadWait ||
-                      (mine.remaining <= 1e-7 && mine.stock <= 1e-7)))) {
-            cart.state = CartState.inbound;
-          }
-        case CartState.inbound:
-          cart.progress = max(
-            0,
-            cart.progress - dt * speed / max(.01, route.length),
-          );
-          if (cart.progress <= 0) cart.state = CartState.unloading;
-        case CartState.unloading:
-          if (gate.unloadingCart != null && gate.unloadingCart != cart.id) {
-            continue;
-          }
-          gate.unloadingCart = cart.id;
-          cart.hold.transferTo(
-            factory.rawOre,
-            dt * GameBalance.cartUnloadPerSecond,
-          );
-          if (cart.cargo < 1e-7) {
-            gate.unloadingCart = null;
-            cart.state = CartState.outbound;
-          }
+    if (dt <= 0) return;
+    final budgets = <int, double>{};
+    for (final segment in network.segments) {
+      if (segment.ready) {
+        budgets[segment.id] = baseOrePerSecond * speed * dt;
+      }
+    }
+
+    // All mines compete for capacity on any conveyor sections they share.
+    // Alternate priority over simulation ticks to prevent starvation.
+    final active = mines.where((m) {
+      final route = network.routeFor(m.id);
+      return route != null && route.ready && m.stock > 0;
+    }).toList();
+    if (active.isEmpty) return;
+    _turn = (_turn + 1) % active.length;
+    for (var i = 0; i < active.length; i++) {
+      final mine = active[(i + _turn) % active.length];
+      final route = network.routeFor(mine.id)!;
+      var quantity = min(mine.stock, factory.rawOre.free);
+      for (final segment in route.segments) {
+        quantity = min(quantity, budgets[segment.id] ?? 0);
+      }
+      if (quantity <= 0) continue;
+      final moved = mine.storage.ore.transferTo(factory.rawOre, quantity);
+      for (final segment in route.segments) {
+        budgets[segment.id] = max(0, (budgets[segment.id] ?? 0) - moved);
       }
     }
   }
+
+  int _turn = 0;
 }
