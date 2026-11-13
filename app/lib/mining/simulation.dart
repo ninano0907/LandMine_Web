@@ -47,27 +47,29 @@ class MiningGame {
   }) : unlockedUpgradeLevels = Map.unmodifiable(unlockedUpgradeLevels) {
     network = RailNetwork(factory.gates);
     trade = TradeService(factory, episode.minerals.first.price);
-    final random = Random(seed ?? stage.seed);
-    _random = Random((seed ?? stage.seed) + 719);
-    deposits = [
-      MineShaft(0, episode.minerals.first, const Point2(.46, .42), 450),
-    ];
-    for (var i = 1; i < stage.deposits; i++) {
-      Point2 point = Point2(
-        .08 + random.nextDouble() * .84,
-        .08 + random.nextDouble() * .84,
-      );
-      for (
-        var retry = 0;
-        retry < 100 &&
-            (deposits.any((d) => d.point.distance(point) < .14) ||
-                entrance.distance(point) < .26);
-        retry++
-      ) {
-        point = Point2(
+    // A new map every round, while explicit seeds keep tests reproducible.
+    final mapSeed = seed ?? Random().nextInt(1 << 31);
+    final random = Random(mapSeed);
+    _random = Random(mapSeed ^ 719);
+    deposits = [];
+    for (var i = 0; i < stage.deposits; i++) {
+      Point2? point;
+      // Rejection sampling keeps the factory approach and mine entrances clear.
+      // Never accept a colliding candidate just because retries ran out.
+      for (var retry = 0; retry < 2000; retry++) {
+        final candidate = Point2(
           .08 + random.nextDouble() * .84,
           .08 + random.nextDouble() * .84,
         );
+        if (entrance.distance(candidate) < .31 ||
+            deposits.any((d) => d.point.distance(candidate) < .16)) {
+          continue;
+        }
+        point = candidate;
+        break;
+      }
+      if (point == null) {
+        throw StateError('Unable to place mine ${i + 1} without overlap');
       }
       deposits.add(
         MineShaft(
