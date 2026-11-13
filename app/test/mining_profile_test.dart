@@ -80,4 +80,16 @@ void main() {
     expect(nextRound.levels[Upgrade.speed], 0);
   });
 
+  test('unlocked stages survive saving and do not regress', () {
+    final profile = MiningProfile();
+    expect(profile.unlockedStage, 0);
+    profile.unlockStageThrough(3);
+    profile.unlockStageThrough(1);
+    expect(profile.unlockedStage, 3);
+
+    final restored = MiningProfile.decode(profile.encode());
+    expect(restored.unlockedStage, 3);
+    expect(MiningProfile.decode('{}').unlockedStage, 0);
+  });
+
 }
