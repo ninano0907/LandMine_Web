@@ -1,18 +1,10 @@
 {
-  "name": "랜드마인 웹앱",
-  "short_name": "랜드마인",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "lang": "ko",
+  "id": "./", "name": "광맥 · 사람과 수레의 시대", "short_name": "광맥",
+  "lang": "ko", "start_url": "./", "scope": "./", "display": "standalone",
+  "orientation": "landscape", "background_color": "#ede5d2", "theme_color": "#473b2b",
+  "description": "탐사, 채굴, 레일 운송과 금 판매를 즐기는 광산 경영 게임",
   "icons": [
-    {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    {"src":"icons/Icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"icons/Icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
   ]
 }

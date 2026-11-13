@@ -1,0 +1,7 @@
+app/.dart_tool/
+app/build/
+app/.flutter-plugins-dependencies
+app/.packages
+.DS_Store
+
+.last_build_id
