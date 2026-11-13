@@ -26,6 +26,35 @@ class MiningApp extends StatelessWidget {
       colorSchemeSeed: const Color(0xFFEBC56A),
       scaffoldBackgroundColor: const Color(0xFFEDE5D2),
     ),
-    home: const MiningScreen(),
+    home: const _StartupGreeting(child: MiningScreen()),
   );
+}
+
+class _StartupGreeting extends StatefulWidget {
+  const _StartupGreeting({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_StartupGreeting> createState() => _StartupGreetingState();
+}
+
+class _StartupGreetingState extends State<_StartupGreeting> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('하이'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
