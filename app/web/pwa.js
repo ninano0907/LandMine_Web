@@ -28,23 +28,15 @@ install.addEventListener('click', async () => {
   await prompt.prompt(); prompt = null; install.hidden = true;
 });
 window.addEventListener('appinstalled', () => { install.hidden = true; });
-async function startGame() {
-  if ('serviceWorker' in navigator) {
-    try {
-      await navigator.serviceWorker.register('./sw.js');
-      await navigator.serviceWorker.ready;
-      if (!navigator.serviceWorker.controller) {
-        await Promise.race([
-          new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, {once:true})),
-          new Promise(resolve => setTimeout(resolve, 4000))
-        ]);
-      }
-    } catch (error) { console.error(error); }
-  }
+function startGame() {
   const bootstrap = document.createElement('script');
   bootstrap.src = 'flutter_bootstrap.js';
   bootstrap.async = true;
   bootstrap.onerror = () => { document.querySelector('#loading p').textContent = '로딩에 실패했습니다. 인터넷 연결을 확인하고 새로고침해 주세요.'; };
   document.body.appendChild(bootstrap);
 }
+// Start independently: an unavailable offline cache must never block the game.
 startGame();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(console.error);
+}
