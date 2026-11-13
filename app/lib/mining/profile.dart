@@ -14,7 +14,8 @@ class MiningProfile {
         };
 
   static int _cap(Upgrade upgrade) =>
-      upgrade == Upgrade.speed ? 2 : upgrade == Upgrade.processing ? 3 : 4;
+      upgrade == Upgrade.speed ? 2 :
+      (upgrade == Upgrade.processing || upgrade == Upgrade.purity || upgrade == Upgrade.artisan) ? 3 : 4;
 
   int limit(Upgrade upgrade) => research[upgrade]!;
   int maxLimit(Upgrade upgrade) => _cap(upgrade);
