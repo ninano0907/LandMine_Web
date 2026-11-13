@@ -59,7 +59,8 @@ class TerrainMap {
   /// Counts how many samples of a new conveyor cross each obstacle type.
   /// A bridge permits river sections and a tunnel permits mountain sections.
   ({bool river, bool mountain}) crossings(Point2 a, Point2 b) {
-    final steps = max(24, (a.distance(b) * 200).ceil());
+    // Fine spacing prevents narrow terrain crossings from being skipped.
+    final steps = max(48, (a.distance(b) * 1000).ceil());
     var river = false;
     var mountain = false;
     for (var i = 0; i <= steps; i++) {
@@ -72,7 +73,7 @@ class TerrainMap {
 
   /// Segment sampling is sufficient for the first playable terrain iteration.
   bool crossesObstacle(Point2 a, Point2 b) {
-    final steps = max(12, (a.distance(b) * 100).ceil());
+    final steps = max(48, (a.distance(b) * 1000).ceil());
     for (var i = 0; i <= steps; i++) {
       if (blocked(a.towards(b, i / steps))) return true;
     }
