@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'simulation.dart';
+import 'content.dart';
 
 /// Permanent progress lives outside each individual mining run.
 class MiningProfile {
@@ -45,7 +46,8 @@ class MiningProfile {
   }
 
   void unlockStageThrough(int index) {
-    if (index > unlockedStage) unlockedStage = index;
+    final safeIndex = index.clamp(0, stages.length - 1).toInt();
+    if (safeIndex > unlockedStage) unlockedStage = safeIndex;
   }
 
   /// Negative runs cannot erase previously earned permanent currency.
@@ -106,8 +108,8 @@ class MiningProfile {
           ? money.toDouble()
           : 0,
       research: limits,
-      unlockedStage: data['unlockedStage'] is int && data['unlockedStage'] >= 0
-          ? data['unlockedStage'] as int
+      unlockedStage: data['unlockedStage'] is int
+          ? (data['unlockedStage'] as int).clamp(0, stages.length - 1).toInt()
           : 0,
       bridgeUnlocked: data['bridgeUnlocked'] == true,
       tunnelUnlocked: data['tunnelUnlocked'] == true,
