@@ -117,4 +117,35 @@ void main() {
     expect(MiningProfile.decode('{"bridgeUnlocked":"true","tunnelUnlocked":1}').tunnelUnlocked, isFalse);
   });
 
+  test('bridge and tunnel cannot unlock without enough permanent money', () {
+    final profile = MiningProfile();
+    expect(profile.unlockBridge(), isFalse);
+    expect(profile.unlockTunnel(), isFalse);
+    expect(profile.balance, 0);
+    expect(profile.bridgeUnlocked, isFalse);
+    expect(profile.tunnelUnlocked, isFalse);
+
+    profile.collectRunProfit(MiningProfile.bridgeResearchCost - 1);
+    expect(profile.unlockBridge(), isFalse);
+    profile.collectRunProfit(1);
+    expect(profile.unlockBridge(), isTrue);
+    expect(profile.balance, 0);
+    expect(profile.unlockTunnel(), isFalse);
+
+    profile.collectRunProfit(MiningProfile.tunnelResearchCost - 1);
+    expect(profile.unlockTunnel(), isFalse);
+    profile.collectRunProfit(1);
+    expect(profile.unlockTunnel(), isTrue);
+    expect(profile.balance, 0);
+  });
+
+  test('repeated permanent unlocks never charge money twice', () {
+    final profile = MiningProfile()..collectRunProfit(10000);
+    expect(profile.unlockBridge(), isTrue);
+    expect(profile.unlockTunnel(), isTrue);
+    final remaining = profile.balance;
+    expect(profile.unlockBridge(), isFalse);
+    expect(profile.unlockTunnel(), isFalse);
+    expect(profile.balance, remaining);
+  });
 }
