@@ -483,41 +483,15 @@ class _MiningScreenState extends State<MiningScreen>
       builder: (context, refresh) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '운반 수레 · 50 / 100 / 200',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          ...game.carts.map(
-            (cart) => ListTile(
-              title: Text('수레 ${cart.id + 1} · 갱도 ${cart.depositId + 1}'),
-              subtitle: Text(
-                'Lv.${cart.level} · ${cart.status} · ${cart.cargo.toStringAsFixed(0)} / ${cart.capacity.round()}',
-              ),
-              trailing: FrontierButton(
-                cart.canUpgrade ? '강화 ${money(cart.upgradeCost)}' : '최대',
-                onPressed: !cart.canUpgrade || game.cash < cart.upgradeCost
-                    ? null
-                    : () {
-                        game.upgradeCart(cart.id);
-                        refresh(() {});
-                        setState(() {});
-                      },
-              ),
-            ),
-          ),
+          const Text('컨베이어 운송', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text('벨트 단계: ${game.levels[Upgrade.speed]! + 1} / 3'),
+          const Text('연결된 모든 갱도가 공용 컨베이어 용량을 나눠 사용합니다.'),
           FrontierButton(
-            '수레 속도 강화 ${money(game.upgradePrice(Upgrade.speed))}',
-            onPressed:
-                game.levels[Upgrade.speed]! >= 4 ||
-                    game.cash < game.upgradePrice(Upgrade.speed)
+            game.levels[Upgrade.speed]! >= 2 ? '최대 단계' : '벨트 강화 ${money(game.upgradePrice(Upgrade.speed))}',
+            onPressed: game.levels[Upgrade.speed]! >= 2 || game.cash < game.upgradePrice(Upgrade.speed)
                 ? null
-                : () {
-                    game.upgrade(Upgrade.speed);
-                    refresh(() {});
-                    setState(() {});
-                  },
+                : () { game.upgrade(Upgrade.speed); refresh(() {}); setState(() {}); },
           ),
-          const SizedBox(height: 8),
           FrontierButton('닫기', onPressed: () => Navigator.pop(context)),
         ],
       ),
@@ -924,23 +898,13 @@ class _MiningScreenState extends State<MiningScreen>
                 SizedBox(
                   width: slotWidth,
                   child: PurchaseTool(
-                    key: const ValueKey('cart'),
-                    icon: Icons.shopping_cart,
-                    label: '수레 ${game.carts.length}',
-                    price: '\$120',
+                    key: const ValueKey('conveyor'),
+                    icon: Icons.route,
+                    label: '벨트 ${game.levels[Upgrade.speed]! + 1}단계',
+                    price: game.levels[Upgrade.speed]! >= 2 ? '최대' : money(game.upgradePrice(Upgrade.speed)),
                     tooltip: '',
-                    onTap:
-                        game.active &&
-                            d != null &&
-                            game.railFor(d.id) != null &&
-                            game.cash >= 120 &&
-                            game.carts
-                                    .where((c) => c.depositId == d.id)
-                                    .length <
-                                4
-                        ? () => purchase(() {
-                            game.buyCart(d.id);
-                          })
+                    onTap: game.active && game.levels[Upgrade.speed]! < 2 && game.cash >= game.upgradePrice(Upgrade.speed)
+                        ? () => improve(Upgrade.speed)
                         : null,
                     onUpgrade: showCarts,
                   ),
