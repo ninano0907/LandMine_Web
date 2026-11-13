@@ -5,12 +5,13 @@ import 'economy.dart';
 import 'entities.dart';
 import 'rail_network.dart';
 import 'systems.dart';
+import 'jewelry.dart';
 export 'geometry.dart';
 export 'economy.dart';
 export 'entities.dart';
 export 'rail_network.dart';
 
-enum Upgrade { workers, speed, scanner, storage, processing }
+enum Upgrade { workers, speed, scanner, storage, processing, purity, artisan }
 
 /// Application coordinator: entities own their state; systems own each flow.
 class MiningGame {
@@ -22,6 +23,7 @@ class MiningGame {
   /// Permanent research caps supplied by the metagame. In-run levels reset to zero.
   final Map<Upgrade, int> unlockedUpgradeLevels;
   final MiningFactory factory = MiningFactory();
+  final JewelryWorkshop jewelry = JewelryWorkshop();
   late final RailNetwork network;
   late final TradeService trade;
   final ProductionSystem production = ProductionSystem();
@@ -79,7 +81,8 @@ class MiningGame {
   }
   bool get active => !paused && !finished;
   bool get canCommand => !finished;
-  double get revenue => trade.revenue;
+  double get revenue => trade.revenue + (finished ? jewelry.settlementValue : 0);
+  double get pendingJewelryValue => jewelry.settlementValue;
   double get cash => stage.startingCash + revenue - spending;
   double get profit => revenue - spending;
   bool get cleared => profit >= stage.targetProfit;
@@ -315,7 +318,8 @@ class MiningGame {
   bool upgradeCart(int id) => false;
 
   int absoluteMaxUpgradeLevel(Upgrade kind) =>
-      kind == Upgrade.speed ? 2 : kind == Upgrade.processing ? 3 : 4;
+      kind == Upgrade.speed ? 2 :
+      (kind == Upgrade.processing || kind == Upgrade.purity || kind == Upgrade.artisan) ? 3 : 4;
 
   /// Unresearched upgrades cannot be purchased during this run.
   /// Legacy games without research data retain their previous upgrade caps.
@@ -328,6 +332,8 @@ class MiningGame {
     Upgrade.scanner => 120.0 + levels[kind]! * 100,
     Upgrade.storage => 150.0 + levels[kind]! * 120,
     Upgrade.processing => 220.0 + levels[kind]! * 220,
+    Upgrade.purity => 240.0 + levels[kind]! * 220,
+    Upgrade.artisan => 200.0 + levels[kind]! * 180,
   };
   bool upgrade(Upgrade kind) {
     if (levels[kind]! >= maxUpgradeLevel(kind) || !_pay(upgradePrice(kind))) {
@@ -336,6 +342,24 @@ class MiningGame {
     levels[kind] = levels[kind]! + 1;
     if (kind == Upgrade.storage) factory.expand(levels[kind]!);
     if (kind == Upgrade.processing) factory.refinery.level = levels[kind]!;
+    if (kind == Upgrade.purity) jewelry.purityLevel = levels[kind]!;
+    if (kind == Upgrade.artisan) jewelry.artisanLevel = levels[kind]!;
+    return true;
+  }
+
+  /// Spend in-run cash to create jewelry for end-of-run settlement.
+  bool craftJewelry() {
+    if (!canCommand ||
+        !jewelry.canCraft(trade.available, cash) ||
+        !_pay(JewelryWorkshop.laborCostPerPiece)) return false;
+    final consumed = factory.gold.take(JewelryWorkshop.goldPerPiece);
+    if (consumed < JewelryWorkshop.goldPerPiece - 1e-7) {
+      // Gold availability is validated above; this guard protects invariants.
+      factory.gold.put(consumed);
+      spending -= JewelryWorkshop.laborCostPerPiece;
+      return false;
+    }
+    jewelry.recordCrafted(1);
     return true;
   }
 
