@@ -5,9 +5,16 @@ import 'simulation.dart';
 /// Permanent progress lives outside each individual mining run.
 class MiningProfile {
   double balance;
+  bool bridgeUnlocked;
+  bool tunnelUnlocked;
   final Map<Upgrade, int> research;
 
-  MiningProfile({this.balance = 0, Map<Upgrade, int>? research})
+  MiningProfile({
+    this.balance = 0,
+    this.bridgeUnlocked = false,
+    this.tunnelUnlocked = false,
+    Map<Upgrade, int>? research,
+  })
       : research = {
           for (final upgrade in Upgrade.values)
             upgrade: (research?[upgrade] ?? 1).clamp(1, _cap(upgrade)).toInt(),
@@ -40,9 +47,28 @@ class MiningProfile {
     if (profit.isFinite && profit > 0) balance += profit;
   }
 
+  static const bridgeResearchCost = 1500.0;
+  static const tunnelResearchCost = 2200.0;
+
+  bool unlockBridge() {
+    if (bridgeUnlocked || balance < bridgeResearchCost) return false;
+    balance -= bridgeResearchCost;
+    bridgeUnlocked = true;
+    return true;
+  }
+
+  bool unlockTunnel() {
+    if (tunnelUnlocked || balance < tunnelResearchCost) return false;
+    balance -= tunnelResearchCost;
+    tunnelUnlocked = true;
+    return true;
+  }
+
   String encode() => jsonEncode({
         'version': 1,
         'balance': balance,
+        'bridgeUnlocked': bridgeUnlocked,
+        'tunnelUnlocked': tunnelUnlocked,
         'research': {
           for (final upgrade in Upgrade.values)
             upgrade.name: limit(upgrade),
@@ -68,6 +94,8 @@ class MiningProfile {
           ? money.toDouble()
           : 0,
       research: limits,
+      bridgeUnlocked: data['bridgeUnlocked'] == true,
+      tunnelUnlocked: data['tunnelUnlocked'] == true,
     );
   }
 }
