@@ -96,6 +96,10 @@ void main() {
     expect(MiningProfile.decode('invalid json').balance, 0);
     expect(MiningProfile.decode('null').unlockedStage, 0);
     expect(MiningProfile.decode('[]').bridgeUnlocked, isFalse);
+    expect(MiningProfile.decode('{"balance":"5000","research":"bad"}').balance, 0);
+    expect(MiningProfile.decode('{"unlockedStage":-3,"bridgeUnlocked":"true","tunnelUnlocked":1}').unlockedStage, 0);
+    expect(MiningProfile.decode('{"bridgeUnlocked":"true","tunnelUnlocked":1}').bridgeUnlocked, isFalse);
+    expect(MiningProfile.decode('{"bridgeUnlocked":"true","tunnelUnlocked":1}').tunnelUnlocked, isFalse);
   });
 
 }
