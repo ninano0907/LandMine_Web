@@ -12,13 +12,15 @@ class MiningProfile {
   final Map<Upgrade, int> research;
 
   MiningProfile({
-    this.balance = 0,
-    this.unlockedStage = 0,
+    double balance = 0,
+    int unlockedStage = 0,
     this.bridgeUnlocked = false,
     this.tunnelUnlocked = false,
     Map<Upgrade, int>? research,
   })
-      : research = {
+      : balance = balance.isFinite && balance > 0 ? balance : 0,
+        unlockedStage = unlockedStage.clamp(0, stages.length - 1).toInt(),
+        research = {
           for (final upgrade in Upgrade.values)
             upgrade: (research?[upgrade] ?? 1).clamp(1, _cap(upgrade)).toInt(),
         };
