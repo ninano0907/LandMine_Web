@@ -308,7 +308,7 @@ class MiningGame {
   bool upgradeCart(int id) => false;
 
   int maxUpgradeLevel(Upgrade kind) =>
-      kind == Upgrade.processing || kind == Upgrade.speed ? 3 : 4;
+      kind == Upgrade.speed ? 2 : kind == Upgrade.processing ? 3 : 4;
   double upgradePrice(Upgrade kind) => switch (kind) {
     Upgrade.workers => 180.0 + levels[kind]! * 150,
     Upgrade.speed => 180.0 + levels[kind]! * 140,
