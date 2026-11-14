@@ -110,6 +110,8 @@ class _RtsState extends State<RtsScreen> {
           ElevatedButton(onPressed:()=>train(false),child:const Text('SCV 50')),
           ElevatedButton(onPressed:()=>train(true),child:const Text('마린 75')),
           ElevatedButton(onPressed:buildBase,child:const Text('기지 400')),
+          IconButton(tooltip:'왼쪽으로 이동',color:Colors.white,onPressed:()=>setState(()=>camera=Offset((camera.dx-150).clamp(0,1400).toDouble(),camera.dy)),icon:const Icon(Icons.arrow_back)),
+          IconButton(tooltip:'위로 이동',color:Colors.white,onPressed:()=>setState(()=>camera=Offset(camera.dx,(camera.dy-150).clamp(0,900).toDouble())),icon:const Icon(Icons.arrow_upward)),
           IconButton(color:Colors.white,onPressed:()=>setState(()=>camera=Offset((camera.dx+150).clamp(0,1400).toDouble(),camera.dy)),icon:const Icon(Icons.arrow_forward)),
           IconButton(color:Colors.white,onPressed:()=>setState(()=>camera=Offset(camera.dx,(camera.dy+150).clamp(0,900).toDouble())),icon:const Icon(Icons.arrow_downward)),
         ])),
