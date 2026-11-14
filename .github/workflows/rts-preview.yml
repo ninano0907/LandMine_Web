@@ -1,0 +1,48 @@
+name: Deploy RTS preview
+on:
+  push:
+    branches:
+      - feature/rts-starcraft-style
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: rts-preview
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.9'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: app
+      - run: flutter analyze lib/rts lib/main.dart
+        working-directory: app
+      - name: Build RTS web preview
+        run: flutter build web --release --base-href /LandMine_Web/rts/ --pwa-strategy=none --no-web-resources-cdn
+        working-directory: app
+      - name: Publish preview to main Pages subdirectory
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/rts-preview
+          cp -a app/build/web/. /tmp/rts-preview/
+          git fetch origin main
+          git checkout main
+          mkdir -p rts
+          find rts -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          cp -a /tmp/rts-preview/. rts/
+          touch rts/.nojekyll
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rts
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: publish RTS preview [skip ci]"
+            git push origin main
+          fi
