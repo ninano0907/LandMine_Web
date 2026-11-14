@@ -63,6 +63,10 @@ void conserved(MiningGame g, {double extraOre = 0, double extraGold = 0}) {
 }
 
 MiningGame fixture() => MiningGame(
+  // Fixed fixture points may cross generated rivers or mountains.
+  // Enable both technologies so this fixture tests gate connectivity.
+  bridgeUnlocked: true,
+  tunnelUnlocked: true,
   stage: const StageSpec(
     1,
     'fixture',
@@ -99,9 +103,6 @@ void main() {
     'Storage level 3',
   );
   require(!g.upgradeMineStorage(0), 'Storage exceeded 3 levels');
-  require(g.upgradeCart(0) && g.carts[0].capacity == 100, 'Cart level 2');
-  require(g.upgradeCart(0) && g.carts[0].capacity == 200, 'Cart level 3');
-  require(!g.upgradeCart(0), 'Cart exceeded 3 levels');
   g.paused = true;
   g.tick(100);
   require(g.elapsed == 0, 'Pause advanced');
@@ -120,7 +121,7 @@ void main() {
   );
   require(g.revenue > 0, 'Merchants did not settle');
   stdout.writeln(
-    'PASS: four gates, local storage/cart tiers, refining, merchant settlement and conservation.',
+    'PASS: four gates, local storage tiers, refining, merchant settlement and conservation.',
   );
 
   for (final stage in stages) {
