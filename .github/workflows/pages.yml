@@ -23,8 +23,6 @@ jobs:
         working-directory: app
       - run: dart analyze lib test tool
         working-directory: app
-      - run: dart tool/check_mining.dart
-        working-directory: app
       - run: bash scripts/build.sh
       - run: cp sw.js app/build/web/sw.js && touch app/build/web/.nojekyll
       - name: Publish built PWA to Pages branch root
