@@ -63,7 +63,7 @@ class _RtsState extends State<RtsScreen> {
     if(queue!=null||cash<cost)return;
     setState((){cash-=cost;queue=marine;ticks=0;});
   }
-  void build(){
+  void buildBase(){
     final workers=chosen.where((s)=>!s.marine);
     if(workers.isEmpty||cash<400)return;
     final pos=workers.first.p;
@@ -90,7 +90,7 @@ class _RtsState extends State<RtsScreen> {
     body:SafeArea(child:LayoutBuilder(builder:(context,c){
       view=Size(c.maxWidth,c.maxHeight-120);
       return Column(children:[
-        Container(height:48,color=const Color(0xff22333c),child:Row(children:[
+        Container(height:48,color: const Color(0xff22333c),child:Row(children:[
           const SizedBox(width:12),const Text('RTS 광산',style:TextStyle(color:Colors.white)),
           const Spacer(),Text('미네랄: $cash',style:const TextStyle(color:Colors.cyanAccent)),
           const SizedBox(width:12)])),
@@ -107,10 +107,10 @@ class _RtsState extends State<RtsScreen> {
             begin=null;end=null;
           }),
           child:CustomPaint(size:Size.infinite,painter:_Map(soldiers,bases,rocks,chosen,camera,begin,end)))),
-        Container(height:72,color=const Color(0xff22333c),child:Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly,children:[
+        Container(height:72,color: const Color(0xff22333c),child:Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly,children:[
           ElevatedButton(onPressed:()=>train(false),child:const Text('SCV 50')),
           ElevatedButton(onPressed:()=>train(true),child:const Text('마린 75')),
-          ElevatedButton(onPressed:build,child:const Text('기지 400')),
+          ElevatedButton(onPressed:buildBase,child:const Text('기지 400')),
           IconButton(color:Colors.white,onPressed:()=>setState(()=>camera=Offset((camera.dx+150).clamp(0,1400).toDouble(),camera.dy)),icon:const Icon(Icons.arrow_forward)),
           IconButton(color:Colors.white,onPressed:()=>setState(()=>camera=Offset(camera.dx,(camera.dy+150).clamp(0,900).toDouble())),icon:const Icon(Icons.arrow_downward)),
         ])),
@@ -129,14 +129,14 @@ class _Map extends CustomPainter{
     c.drawColor(const Color(0xff30473d),BlendMode.src);
     c.save();c.translate(-camera.dx,-camera.dy);
     final p=Paint();
-    p.color=const Color(0x225ea487);
+    p.color: const Color(0x225ea487);
     for(var x=0.0;x<1800;x+=80)c.drawLine(Offset(x,0),Offset(x,1200),p);
     for(var y=0.0;y<1200;y+=80)c.drawLine(Offset(0,y),Offset(1800,y),p);
     for(final o in rocks){
       final crystal=Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx+18,o.dy-15)..lineTo(o.dx+27,o.dy+15)..lineTo(o.dx,o.dy+32)..lineTo(o.dx-25,o.dy+12)..lineTo(o.dx-16,o.dy-18)..close();
-      p.color=const Color(0xff0a6177);c.drawPath(crystal,p);
-      p.color=const Color(0xff39e4ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx+18,o.dy-15)..lineTo(o.dx,o.dy+32)..close(),p);
-      p.color=const Color(0xffa0f6ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx-16,o.dy-18)..lineTo(o.dx,o.dy+32)..close(),p);
+      p.color: const Color(0xff0a6177);c.drawPath(crystal,p);
+      p.color: const Color(0xff39e4ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx+18,o.dy-15)..lineTo(o.dx,o.dy+32)..close(),p);
+      p.color: const Color(0xffa0f6ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx-16,o.dy-18)..lineTo(o.dx,o.dy+32)..close(),p);
     }
     for(final b in bases){
       p.color=Colors.blueGrey;c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:b,width:120,height:90),const Radius.circular(8)),p);
