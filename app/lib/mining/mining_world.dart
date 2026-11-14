@@ -519,8 +519,23 @@ class MineField extends PositionComponent with TapCallbacks, DragCallbacks {
           ..color = const Color(0xFF63543D)
           ..strokeWidth = 4,
       );
-      canvas.drawCircle(entrance, 17, Paint()..color = const Color(0xFF745B39));
-      canvas.drawCircle(entrance, 11, Paint()..color = const Color(0xFF282B27));
+      // Timber-framed arched mine portal instead of a circular hole.
+      final portal = Path()
+        ..moveTo(entrance.dx - 17, entrance.dy + 14)
+        ..lineTo(entrance.dx - 17, entrance.dy - 2)
+        ..arcToPoint(Offset(entrance.dx + 17, entrance.dy - 2),
+            radius: const Radius.circular(17))
+        ..lineTo(entrance.dx + 17, entrance.dy + 14)
+        ..close();
+      canvas.drawPath(portal, Paint()..color = const Color(0xFF745B39));
+      final opening = Path()
+        ..moveTo(entrance.dx - 11, entrance.dy + 13)
+        ..lineTo(entrance.dx - 11, entrance.dy - 2)
+        ..arcToPoint(Offset(entrance.dx + 11, entrance.dy - 2),
+            radius: const Radius.circular(11))
+        ..lineTo(entrance.dx + 11, entrance.dy + 13)
+        ..close();
+      canvas.drawPath(opening, Paint()..color = const Color(0xFF282B27));
       canvas.drawLine(
         entrance + const Offset(-16, -13),
         entrance + const Offset(16, -13),
