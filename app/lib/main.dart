@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'mining/screen.dart';
 import 'rts/screen.dart';
 
 Future<void> main() async {
