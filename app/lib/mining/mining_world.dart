@@ -858,40 +858,22 @@ class BrokerWagonActor extends MineActor {
 
   @override
   void render(Canvas canvas) {
-    canvas.drawRect(
-      const Rect.fromLTWH(-9, -7, 18, 14),
-      Paint()
-        ..color = merchant.id == 0
-            ? const Color(0xFF486F82)
-            : const Color(0xFF8B5B4E),
+    // Brokers travel on foot; mined ore moves through the conveyor network.
+    final coat = Paint()
+      ..color = merchant.id == 0
+          ? const Color(0xFF486F82)
+          : const Color(0xFF8B5B4E);
+    canvas.drawCircle(const Offset(0, -7), 5, Paint()..color = const Color(0xFFE4B98B));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-5, -2, 10, 13), const Radius.circular(3)),
+      coat,
     );
+    canvas.drawLine(const Offset(-3, 10), const Offset(-4, 16),
+        Paint()..color = const Color(0xFF303030)..strokeWidth = 3);
+    canvas.drawLine(const Offset(3, 10), const Offset(4, 16),
+        Paint()..color = const Color(0xFF303030)..strokeWidth = 3);
     if (merchant.cargo.amount > 0) {
-      canvas.drawRect(
-        const Rect.fromLTWH(-6, -4, 12, 8),
-        Paint()..color = const Color(0xFFF3CA5E),
-      );
-    }
-    canvas.drawLine(
-      const Offset(8, 0),
-      const Offset(17, 0),
-      Paint()
-        ..color = const Color(0xFF5D4F3B)
-        ..strokeWidth = 2,
-    );
-    canvas.drawOval(
-      const Rect.fromLTWH(17, -4, 11, 8),
-      Paint()..color = const Color(0xFF614A35),
-    );
-    canvas.drawCircle(
-      const Offset(28, 0),
-      3,
-      Paint()..color = const Color(0xFF614A35),
-    );
-    for (final y in [-8.0, 6.0]) {
-      canvas.drawRect(
-        Rect.fromLTWH(-6, y, 12, 2),
-        Paint()..color = const Color(0xFF2F302B),
-      );
+      canvas.drawCircle(const Offset(9, 5), 5, Paint()..color = const Color(0xFFF3CA5E));
     }
   }
 }
