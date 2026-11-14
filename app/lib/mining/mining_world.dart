@@ -820,18 +820,18 @@ class MineStorageActor extends MineActor {
   @override
   void render(Canvas canvas) {
     canvas.drawRect(
-      const Rect.fromLTWH(-10, -7, 20, 14),
+      const Rect.fromLTWH(-15, -11, 30, 22),
       Paint()..color = const Color(0xFF614F38),
     );
     final fill = mine.stock / mine.storage.capacity;
     canvas.drawRect(
-      Rect.fromLTWH(-8, 5 - fill * 10, 16, fill * 10),
+      Rect.fromLTWH(-12, 8 - fill * 16, 24, fill * 16),
       Paint()..color = const Color(0xFFBBA07A),
     );
     for (var i = 1; i < mine.storage.level; i++) {
       canvas.drawLine(
-        Offset(-9 + i * 6, -7),
-        Offset(-9 + i * 6, 7),
+        Offset(-13 + i * 7, -10),
+        Offset(-13 + i * 7, 10),
         Paint()
           ..color = const Color(0xFFD7BE88)
           ..strokeWidth = 1,
