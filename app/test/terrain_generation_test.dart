@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mine_path/mining/content.dart';
 import 'package:mine_path/mining/simulation.dart';
 import 'package:mine_path/mining/terrain.dart';
-import 'package:mine_path/mining/geometry.dart';
 
 void main() {
   test('terrain is reproducible for the same map seed', () {
