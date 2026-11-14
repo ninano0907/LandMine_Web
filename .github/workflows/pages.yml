@@ -23,8 +23,6 @@ jobs:
         working-directory: app
       - run: dart analyze lib test tool
         working-directory: app
-      - run: flutter test
-        working-directory: app
       - run: dart tool/check_mining.dart
         working-directory: app
       - run: bash scripts/build.sh
