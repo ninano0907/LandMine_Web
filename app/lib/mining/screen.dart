@@ -1237,23 +1237,23 @@ class _MiningScreenState extends State<MiningScreen>
         }
         return [
           Positioned(
-            left: p.x - 18,
-            top: p.y - 25,
-            width: 36,
-            height: 16,
+            left: p.x - 15,
+            top: p.y - 11,
+            width: 30,
+            height: 22,
             child: Material(
-              color: hudPaper,
-              borderRadius: BorderRadius.circular(3),
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
               child: InkWell(
                 key: ValueKey('mine-storage-${mine.id}'),
                 onTap: () => showMineStorage(mine.id),
                 child: Center(
                   child: Text(
-                    'L${mine.storage.level} ↑',
+                    '${mine.storage.level}',
                     style: const TextStyle(
-                      fontSize: 9,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: hudInk,
+                      color: Colors.white,
                     ),
                   ),
                 ),
