@@ -1,12 +1,12 @@
 name: Validate web game
 on:
   push:
-    branches: [main]
+    branches: [main, testing]
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
@@ -26,6 +26,7 @@ jobs:
       - run: bash scripts/build.sh
       - run: cp sw.js app/build/web/sw.js && touch app/build/web/.nojekyll
       - name: Publish built PWA to Pages branch root
+        if: github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
