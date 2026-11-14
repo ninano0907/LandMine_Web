@@ -19,6 +19,7 @@ class _RtsState extends State<RtsScreen> {
   final bases=<Offset>[const Offset(260,260)];
   final rocks=<Offset>[const Offset(425,165),const Offset(485,200),const Offset(510,265),const Offset(495,335),const Offset(435,395),const Offset(380,420),const Offset(1150,750),const Offset(1250,800)];
   final chosen=<Soldier>{};
+  Offset? selectedBase;
   late final Timer timer;
   Offset camera=Offset.zero;
   Offset? begin,end;
@@ -67,12 +68,17 @@ class _RtsState extends State<RtsScreen> {
     if(workers.isEmpty||cash<400)return;
     final pos=workers.first.p;
     if(bases.any((b)=>(b-pos).distance<230))return;
-    setState((){cash-=400;bases.add(pos);});
+    setState((){cash-=400;bases.add(pos);selectedBase=pos;chosen.clear();});
   }
   void command(Offset at){
     final p=at+camera;
     final hits=soldiers.where((s)=>(s.p-p).distance<22);
-    if(hits.isNotEmpty){setState((){chosen..clear()..add(hits.first);});return;}
+    if(hits.isNotEmpty){setState((){selectedBase=null;chosen..clear()..add(hits.first);});return;}
+    for(final base in bases){
+      if((base-p).dx.abs()<60 && (base-p).dy.abs()<45){
+        setState((){selectedBase=base;chosen.clear();});return;
+      }
+    }
     var ore=-1;
     for(var i=0;i<rocks.length;i++){if((rocks[i]-p).distance<38)ore=i;}
     setState((){
@@ -84,10 +90,27 @@ class _RtsState extends State<RtsScreen> {
       }
     });
   }
+  void moveCamera(double dx,double dy)=>setState((){
+    camera=Offset((camera.dx+dx).clamp(0,1400).toDouble(),
+                  (camera.dy+dy).clamp(0,900).toDouble());
+  });
+  Widget _action(String label,VoidCallback action)=>SizedBox(
+    height:29,
+    child:OutlinedButton(
+      style:OutlinedButton.styleFrom(
+        padding:const EdgeInsets.symmetric(horizontal:7),
+        foregroundColor:Colors.cyanAccent,
+        side:const BorderSide(color:Colors.blueGrey),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(3)),
+      ),
+      onPressed:action,
+      child:Text(label,style:const TextStyle(fontSize:11)),
+    ),
+  );
   @override Widget build(BuildContext context)=>Scaffold(
     backgroundColor: const Color(0xff182b29),
     body:SafeArea(child:LayoutBuilder(builder:(context,c){
-      view=Size(c.maxWidth,c.maxHeight-120);
+      view=Size(c.maxWidth,(c.maxHeight-174).clamp(1.0,double.infinity).toDouble());
       return Column(children:[
         Container(height:48,color: const Color(0xff22333c),child:Row(children:[
           const SizedBox(width:12),const Text('RTS 광산',style:TextStyle(color:Colors.white)),
@@ -101,20 +124,72 @@ class _RtsState extends State<RtsScreen> {
           onPanEnd:(_)=>setState((){
             if(begin!=null&&end!=null&&(begin!-end!).distance>12){
               final rect=Rect.fromPoints(begin!+camera,end!+camera);
+              selectedBase=null;
               chosen..clear()..addAll(soldiers.where((s)=>rect.contains(s.p)));
             }
             begin=null;end=null;
           }),
           child:CustomPaint(size:Size.infinite,painter:_Map(soldiers,bases,rocks,chosen,camera,begin,end)))),
-        Container(height:72,color: const Color(0xff22333c),child:Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly,children:[
-          ElevatedButton(onPressed:()=>train(false),child:const Text('SCV 50')),
-          ElevatedButton(onPressed:()=>train(true),child:const Text('마린 75')),
-          ElevatedButton(onPressed:buildBase,child:const Text('기지 400')),
-          IconButton(tooltip:'왼쪽으로 이동',color:Colors.white,onPressed:()=>setState(()=>camera=Offset((camera.dx-150).clamp(0,1400).toDouble(),camera.dy)),icon:const Icon(Icons.arrow_back)),
-          IconButton(tooltip:'위로 이동',color:Colors.white,onPressed:()=>setState(()=>camera=Offset(camera.dx,(camera.dy-150).clamp(0,900).toDouble())),icon:const Icon(Icons.arrow_upward)),
-          IconButton(color:Colors.white,onPressed:()=>setState(()=>camera=Offset((camera.dx+150).clamp(0,1400).toDouble(),camera.dy)),icon:const Icon(Icons.arrow_forward)),
-          IconButton(color:Colors.white,onPressed:()=>setState(()=>camera=Offset(camera.dx,(camera.dy+150).clamp(0,900).toDouble())),icon:const Icon(Icons.arrow_downward)),
-        ])),
+        Container(
+          height:126,
+          padding:const EdgeInsets.all(5),
+          color:const Color(0xff17252e),
+          child:Row(children:[
+            Expanded(flex:2,child:GestureDetector(
+              behavior:HitTestBehavior.opaque,
+              onTapDown:(d)=>setState((){
+                final world=Offset(
+                  d.localPosition.dx/((c.maxWidth-10)*2/7)*1800,
+                  d.localPosition.dy/116*1200,
+                );
+                camera=Offset(
+                  (world.dx-view.width/2).clamp(0,1400).toDouble(),
+                  (world.dy-view.height/2).clamp(0,900).toDouble(),
+                );
+              }),
+              child:ClipRect(child:CustomPaint(
+                painter:_MiniMap(soldiers,bases,rocks,camera,view),
+                child:const SizedBox.expand(),
+              )),
+            )),
+            const SizedBox(width:6),
+            Expanded(flex:2,child:Container(
+              alignment:Alignment.center,
+              decoration:BoxDecoration(color:const Color(0xff243640),border:Border.all(color:Colors.blueGrey)),
+              child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
+                Text(selectedBase!=null?'커맨드 센터':chosen.isEmpty?'선택 없음':chosen.length==1?(chosen.first.marine?'마린':'SCV'):'유닛 ${chosen.length}기',
+                  textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.bold)),
+                const SizedBox(height:5),
+                Text(selectedBase!=null?'기지 · 생산':chosen.isEmpty?'유닛이나 기지를 선택하세요':chosen.any((u)=>!u.marine)?'채굴 / 이동 / 확장':'이동 / 방어',
+                  textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70,fontSize:11)),
+                if(queue!=null)Text('생산 중: ${queue!?'마린':'SCV'}',style:const TextStyle(color:Colors.cyanAccent,fontSize:11)),
+              ]),
+            )),
+            const SizedBox(width:6),
+            Expanded(flex:3,child:Container(
+              padding:const EdgeInsets.all(4),
+              decoration:BoxDecoration(color:const Color(0xff243640),border:Border.all(color:Colors.blueGrey)),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                const Text('명령',style:TextStyle(color:Colors.white70,fontSize:11)),
+                Expanded(child:SingleChildScrollView(child:Wrap(spacing:4,runSpacing:4,children:[
+                  if(selectedBase!=null||chosen.isEmpty) ...[
+                    _action('SCV 50',()=>train(false)),
+                    _action('마린 75',()=>train(true)),
+                  ],
+                  if(chosen.any((u)=>!u.marine)) _action('기지 400',buildBase),
+                  if(chosen.isNotEmpty) _action('정지',()=>setState((){
+                    for(final u in chosen){u.goal=null;u.ore=null;u.carrying=false;}
+                  })),
+                  if(selectedBase==null&&chosen.isEmpty)const Text('유닛 또는 기지 선택',style:TextStyle(color:Colors.white54,fontSize:11)),
+                  _action('◀',()=>moveCamera(-150,0)),
+                  _action('▲',()=>moveCamera(0,-150)),
+                  _action('▶',()=>moveCamera(150,0)),
+                  _action('▼',()=>moveCamera(0,150)),
+                ]))),
+              ]),
+            )),
+          ]),
+        ),
       ]);
     })),
   );
@@ -163,4 +238,32 @@ class _Map extends CustomPainter{
     t.paint(c,at);
   }
   @override bool shouldRepaint(covariant _Map old)=>true;
+}
+
+class _MiniMap extends CustomPainter {
+  _MiniMap(this.units,this.bases,this.rocks,this.camera,this.view);
+  final List<Soldier> units;
+  final List<Offset> bases,rocks;
+  final Offset camera;
+  final Size view;
+  @override void paint(Canvas canvas,Size size){
+    canvas.drawColor(const Color(0xff30473d),BlendMode.src);
+    final sx=size.width/1800,sy=size.height/1200;
+    final p=Paint();
+    for(final rock in rocks){
+      p.color=Colors.cyanAccent;
+      canvas.drawCircle(Offset(rock.dx*sx,rock.dy*sy),3,p);
+    }
+    for(final base in bases){
+      p.color=Colors.blueGrey.shade200;
+      canvas.drawRect(Rect.fromCenter(center:Offset(base.dx*sx,base.dy*sy),width:8,height:7),p);
+    }
+    for(final unit in units){
+      p.color=unit.marine?Colors.lightBlue:Colors.amber;
+      canvas.drawCircle(Offset(unit.p.dx*sx,unit.p.dy*sy),2,p);
+    }
+    p..color=Colors.white..style=PaintingStyle.stroke..strokeWidth=1.5;
+    canvas.drawRect(Rect.fromLTWH(camera.dx*sx,camera.dy*sy,view.width*sx,view.height*sy),p);
+  }
+  @override bool shouldRepaint(covariant _MiniMap old)=>true;
 }
