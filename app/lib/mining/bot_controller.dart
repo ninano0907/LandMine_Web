@@ -1,4 +1,5 @@
 import 'simulation.dart';
+import 'content.dart';
 
 /// Simple deterministic autonomous opponent for isolated simulations.
 /// Uses the same public actions and costs as the human player.
@@ -67,4 +68,34 @@ class MiningBotController {
       game.upgrade(Upgrade.processing);
     }
   }
+}
+
+
+/// Three independent AI competitors, each with its own mine economy.
+/// The human game is never mutated by this simulation.
+class MiningBotMatch {
+  final List<MiningBotController> bots;
+
+  MiningBotMatch({
+    required StageSpec stage,
+    int seed = 404,
+    double decisionInterval = 2,
+  }) : bots = List.generate(
+          3,
+          (index) => MiningBotController(
+            MiningGame(stage: stage, seed: seed + index + 1),
+            decisionInterval: decisionInterval,
+          ),
+        );
+
+  void tick(double seconds) {
+    for (final bot in bots) {
+      bot.tick(seconds);
+    }
+  }
+
+  List<double> get profits =>
+      List.unmodifiable(bots.map((bot) => bot.game.profit));
+
+  bool get finished => bots.every((bot) => bot.game.finished);
 }
