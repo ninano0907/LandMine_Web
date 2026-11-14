@@ -15,6 +15,7 @@ Future<void> main() async {
 }
 
 class MiningApp extends StatelessWidget {
+  static const buildNumber = String.fromEnvironment('BUILD_NUMBER', defaultValue: 'dev');
   const MiningApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -25,6 +26,26 @@ class MiningApp extends StatelessWidget {
       brightness: Brightness.light,
       colorSchemeSeed: const Color(0xFFEBC56A),
       scaffoldBackgroundColor: const Color(0xFFEDE5D2),
+    ),
+    builder: (context, child) => Stack(
+      children: [
+        if (child != null) child,
+        Positioned(
+          top: MediaQuery.paddingOf(context).top + 4,
+          left: 6,
+          child: IgnorePointer(
+            child: Material(
+              color: const Color(0xDD222222),
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                child: Text('빌드 #$buildNumber',
+                    style: const TextStyle(color: Colors.white, fontSize: 11)),
+              ),
+            ),
+          ),
+        ),
+      ],
     ),
     home: const _StartupGreeting(child: MiningScreen()),
   );
