@@ -832,7 +832,6 @@ class _MiningScreenState extends State<MiningScreen>
   }
 
   Widget _topBar(double width) {
-    final d = selected == null ? null : game.deposit(selected!);
     final slotWidth = ((width - 230) / 6).clamp(44, 68).toDouble();
     final progressDay = min(
       364,
