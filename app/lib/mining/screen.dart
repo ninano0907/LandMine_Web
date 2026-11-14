@@ -76,6 +76,8 @@ class _MiningScreenState extends State<MiningScreen>
   final Map<int, Offset> _touches = {};
   Offset? _lastFocal;
   double _lastSpan = 0;
+  Offset? _panStart;
+  bool _singlePointerPanning = false;
   void _rememberPinch() {
     final points = _touches.values.take(2).toList();
     _lastFocal = (points[0] + points[1]) / 2;
@@ -94,6 +96,10 @@ class _MiningScreenState extends State<MiningScreen>
       scene.trackPreview = null;
     }
     _touches[event.pointer] = event.localPosition;
+    if (_touches.length == 1) {
+      _panStart = event.localPosition;
+      _singlePointerPanning = false;
+    }
     if (_touches.length >= 2) {
       scene.cameraGestureActive = true;
       scene.dragNode = null;
@@ -107,7 +113,15 @@ class _MiningScreenState extends State<MiningScreen>
     final previous = _lastFocal, span = _lastSpan;
     _touches[event.pointer] = event.localPosition;
     if (_touches.length < 2) {
-      if (event.kind == PointerDeviceKind.mouse && scene.cameraGestureActive) {
+      if (tool == 'inspect' && _panStart != null &&
+          (event.localPosition - _panStart!).distance > 8) {
+        _singlePointerPanning = true;
+        scene.cameraGestureActive = true;
+        scene.dragNode = null;
+        scene.trackPreview = null;
+      }
+      if (_singlePointerPanning ||
+          (event.kind == PointerDeviceKind.mouse && scene.cameraGestureActive)) {
         scene.moveCamera(
           Vector2(-event.delta.dx, -event.delta.dy) /
               scene.camera.viewfinder.zoom,
@@ -135,6 +149,8 @@ class _MiningScreenState extends State<MiningScreen>
     _lastFocal = null;
     _lastSpan = 0;
     if (_touches.isEmpty) {
+      _panStart = null;
+      _singlePointerPanning = false;
       final oldScene = scene;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && identical(scene, oldScene) && _touches.isEmpty) {
@@ -165,6 +181,8 @@ class _MiningScreenState extends State<MiningScreen>
   void startStage(int index, {bool rebuild = true}) {
     void reset() {
       _touches.clear();
+      _panStart = null;
+      _singlePointerPanning = false;
       _lastFocal = null;
       _lastSpan = 0;
       stageIndex = index;
