@@ -135,12 +135,13 @@ class _RtsState extends State<RtsScreen> {
           padding:const EdgeInsets.all(5),
           color:const Color(0xff17252e),
           child:Row(children:[
-            Expanded(flex:2,child:GestureDetector(
+            Expanded(flex:2,child:LayoutBuilder(builder:(context,mini){
+              return GestureDetector(
               behavior:HitTestBehavior.opaque,
               onTapDown:(d)=>setState((){
                 final world=Offset(
-                  d.localPosition.dx/((c.maxWidth-10)*2/7)*1800,
-                  d.localPosition.dy/116*1200,
+                  d.localPosition.dx/mini.maxWidth*1800,
+                  d.localPosition.dy/mini.maxHeight*1200,
                 );
                 camera=Offset(
                   (world.dx-view.width/2).clamp(0,1400).toDouble(),
@@ -151,7 +152,8 @@ class _RtsState extends State<RtsScreen> {
                 painter:_MiniMap(soldiers,bases,rocks,camera,view),
                 child:const SizedBox.expand(),
               )),
-            )),
+              );
+            })),
             const SizedBox(width:6),
             Expanded(flex:2,child:Container(
               alignment:Alignment.center,
