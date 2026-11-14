@@ -66290,7 +66290,7 @@ A.Y6.prototype={
 $2(a,b){var s,r=null,q=A.c([],t.p)
 if(b!=null)q.push(b)
 s=A.bJ(a,B.bK,t.w).w
-q.push(A.ja(r,A.oX(A.iV(B.Q,!0,A.fZ(4),new A.cn(B.C0,A.bd("\ube4c\ub4dc #77",r,r,B.Px,r),r),B.D,B.A1,0,r,r,r,r,r,B.b_),!0,r),r,r,6,r,s.r.b+4,r))
+q.push(A.ja(r,A.oX(A.iV(B.Q,!0,A.fZ(4),new A.cn(B.C0,A.bd("\ube4c\ub4dc #82",r,r,B.Px,r),r),B.D,B.A1,0,r,r,r,r,r,B.b_),!0,r),r,r,6,r,s.r.b+4,r))
 return A.no(B.by,q,B.a9,B.c8)},
 $S:433}
 A.A_.prototype={
@@ -66439,9 +66439,9 @@ if(s==null)s=this.a.c
 return new A.c_(s.a,Math.min(0.985,s.b+0.0325))},
 gE2(){var s=this.e
 if(s==null)s=this.a.c
-return new A.c_(B.c.br(s.a-0.011,0.01,0.99),B.c.br(s.b+0.0125,0.01,0.99))}}
+return new A.c_(B.c.br(s.a-0.022,0.01,0.99),B.c.br(s.b+0.0125,0.01,0.99))}}
 A.c_.prototype={
-bb(a){return Math.sqrt(Math.pow((this.a-a.a)*2.5,2)+Math.pow(this.b-a.b,2))*2},
+bb(a){return Math.sqrt(Math.pow((this.a-a.a)*1.25,2)+Math.pow(this.b-a.b,2))*2},
 m2(a,b){var s=this.a,r=this.b
 return new A.c_(s+(a.a-s)*b,r+(a.b-r)*b)}}
 A.aeP.prototype={
@@ -66563,7 +66563,7 @@ k=t.gN
 p=new A.Eh(q,!1,p,m,B.aE,0,new A.bS(l,0,0,k),null,new A.bD([]),new A.bD([]))
 p.jG(null,null,null,null,0,null,null,null,null)
 m=new A.a0(new Float32Array(2))
-m.bH(3000,1200)
+m.bH(3000,2400)
 p.su(m)
 q.bh=p
 p=Math.max(q.e9$.a[0]/1500,q.gv7())
@@ -66575,7 +66575,7 @@ p=a.e
 p.c2(m)
 p.a_()
 m=new A.a0(new Float32Array(2))
-m.bH(1500,600)
+m.bH(1500,1200)
 a=a.f
 a.c2(m.a1(0,q.e9$.bP(0,p.a[0]).bP(0,2)).hY(0))
 a.a_()
@@ -66726,13 +66726,13 @@ g.el(e)}}a1.Eg(s)
 if((a1.hx+=s)>=0.1){a1.hx=0
 a1.dn.$0()}},
 gv7(){var s=this.e9$.a
-return Math.max(s[0]/3000,s[1]/1200)},
+return Math.max(s[0]/3000,s[1]/2400)},
 nN(a){var s,r,q,p=this.p1.ay.ax,o=this.e9$.bP(0,p.e.a[0])
 p=p.f
 s=p.hY(0).X(0,a).a
 r=o.a
 q=B.c.br(s[0],0,Math.max(0,3000-r[0]))
-r=B.c.br(s[1],0,Math.max(0,1200-r[1]))
+r=B.c.br(s[1],0,Math.max(0,2400-r[1]))
 s=new A.a0(new Float32Array(2))
 s.bH(q,r)
 p.c2(s.hY(0))
@@ -67873,7 +67873,7 @@ q===$&&A.a()
 s=r.Q
 q.cC=s==="dig"
 q.E=s==="rail"
-q.S=s==="pan"
+q.S=s==="pan"||s==="inspect"
 q.ey=r.z
 q.ci=r.y
 q.bt=r.cx
@@ -68001,7 +68001,7 @@ r=h.e9$.bP(0,h.p1.ay.ax.e.a[0])
 h=A.BJ(B.ex,1)
 q=s.a
 p=q[0]/3000
-q=q[1]/1200
+q=q[1]/2400
 o=r.a
 n=o[0]
 o=o[1]
@@ -68017,7 +68017,7 @@ l===$&&A.a()
 l=l.b
 k=A.T(l).h("a6<1,S<j>>")
 l=A.W(new A.a6(l,new A.a8H(),k),k.h("as.E"))
-return A.Dp(i,A.iB(i,A.QR(i,i,i,new A.Ei(new A.z(p,q,p+n/3000,q+o/1200),m,l,i)),i,new A.de(i,i,h,i,i,i,B.aF),44,i,i,98),B.aW,!1,B.Rh,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,new A.a8I(j),i,i,i,i)},
+return A.Dp(i,A.iB(i,A.QR(i,i,i,new A.Ei(new A.z(p,q,p+n/3000,q+o/2400),m,l,i)),i,new A.de(i,i,h,i,i,i,B.aF),80,i,i,98),B.aW,!1,B.Rh,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,new A.a8I(j),i,i,i,i)},
 a3y(){var s,r,q,p,o,n,m,l,k,j,i,h,g=this,f=null,e=g.at
 if(e==="stable")s=A.c([B.X],t.K4)
 else{r=t.K4
@@ -68878,7 +68878,7 @@ $0(){var s,r,q,p=this.a.e
 p===$&&A.a()
 s=this.b.b
 r=new A.a0(new Float32Array(2))
-r.bH(s.a/96*3000,s.b/42*1200)
+r.bH(s.a/96*3000,s.b/78*2400)
 s=p.p1.ay.ax
 q=s.f
 q.c2(r.a1(0,p.e9$.bP(0,s.e.a[0]).bP(0,2)).hY(0))
@@ -69027,7 +69027,7 @@ q===$&&A.a()
 m=q.dQ()*3.141592653589793*2
 q=n.a
 p=q.c
-l=new A.c_(p.a+Math.cos(m)*0.025/5,p.b+Math.sin(m)*0.025/2)
+l=new A.c_(p.a+Math.cos(m)*0.025/2.5,p.b+Math.sin(m)*0.025/2)
 k=i.f.BW(l).c
 p=s.length
 j=k.bb(l)
