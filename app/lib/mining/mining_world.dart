@@ -39,7 +39,7 @@ class MiningWorld extends FlameGame {
   @override
   Future<void> onLoad() async {
     camera.viewfinder.anchor = Anchor.topLeft;
-    field = MineField(this)..size = Vector2(3000, 1200);
+    field = MineField(this)..size = Vector2(3000, 2400);
     resetCamera();
     await world.add(field);
     await field.add(ExcavationCursor(this));
@@ -92,13 +92,13 @@ class MiningWorld extends FlameGame {
       camera.localToGlobal(field.location(point));
 
   Vector2 get visibleMapSize => canvasSize / camera.viewfinder.zoom;
-  double get minimumZoom => max(canvasSize.x / 3000, canvasSize.y / 1200);
+  double get minimumZoom => max(canvasSize.x / 3000, canvasSize.y / 2400);
   void moveCamera(Vector2 delta) {
     final visible = visibleMapSize;
     final next = camera.viewfinder.position + delta;
     camera.viewfinder.position = Vector2(
       next.x.clamp(0, max(0, 3000 - visible.x)).toDouble(),
-      next.y.clamp(0, max(0, 1200 - visible.y)).toDouble(),
+      next.y.clamp(0, max(0, 2400 - visible.y)).toDouble(),
     );
   }
 
@@ -117,7 +117,7 @@ class MiningWorld extends FlameGame {
   void resetCamera() {
     _baseZoom = max(canvasSize.x / 1500, minimumZoom);
     camera.viewfinder.zoom = _baseZoom;
-    camera.viewfinder.position = Vector2(1500, 600) - visibleMapSize / 2;
+    camera.viewfinder.position = Vector2(1500, 1200) - visibleMapSize / 2;
     moveCamera(Vector2.zero());
   }
 
@@ -138,7 +138,7 @@ class MiningWorld extends FlameGame {
 
   void lookAt(Point2 point) {
     camera.viewfinder.position =
-        Vector2(point.x * 3000, point.y * 1200) - visibleMapSize / 2;
+        Vector2(point.x * 3000, point.y * 2400) - visibleMapSize / 2;
     moveCamera(Vector2.zero());
   }
 
