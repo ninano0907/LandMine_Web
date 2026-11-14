@@ -422,16 +422,37 @@ class MineField extends PositionComponent with TapCallbacks, DragCallbacks {
       )!;
       final delta = b - a;
       final perp = Offset(-delta.dy, delta.dx) / max(1, delta.distance) * 4;
-      final steps = max(1, (delta.distance / 10).floor());
-      for (var i = 0; i <= steps; i++) {
-        final p = Offset.lerp(a, b, i / steps)!;
-        canvas.drawLine(
-          p - perp * 1.7,
-          p + perp * 1.7,
-          Paint()
-            ..color = const Color(0xFF65503D)
-            ..strokeWidth = 3,
-        );
+      // Continuous belt body, rather than railway sleepers or carts.
+      canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..color = const Color(0xFF433C34)
+          ..strokeWidth = 13
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..color = const Color(0xFF8B7961)
+          ..strokeWidth = 9
+          ..strokeCap = StrokeCap.round,
+      );
+      // Animated diagonal cleats show the belt moving toward the factory.
+      if (rail.ready && game.active && delta.distance > 0) {
+        final spacing = 14.0;
+        final offset = (game.elapsed * game.speed * 18) % spacing;
+        for (var distance = offset; distance < delta.distance; distance += spacing) {
+          final p = a + delta * (distance / delta.distance);
+          canvas.drawLine(
+            p - perp * .7 - delta / delta.distance * 2,
+            p + perp * .7 + delta / delta.distance * 2,
+            Paint()
+              ..color = const Color(0xFFD0B992)
+              ..strokeWidth = 2,
+          );
+        }
       }
       // Only the actual river or mountain span is highlighted, not the
       // entire conveyor. This keeps long routes visually uncluttered.
