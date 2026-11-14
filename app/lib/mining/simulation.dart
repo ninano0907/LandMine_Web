@@ -373,7 +373,9 @@ class MiningGame {
   bool craftJewelry() {
     if (!canCommand ||
         !jewelry.canCraft(trade.available, cash) ||
-        !_pay(JewelryWorkshop.laborCostPerPiece)) return false;
+        !_pay(JewelryWorkshop.laborCostPerPiece)) {
+      return false;
+    }
     final consumed = factory.gold.take(JewelryWorkshop.goldPerPiece);
     if (consumed < JewelryWorkshop.goldPerPiece - 1e-7) {
       // Gold availability is validated above; this guard protects invariants.
