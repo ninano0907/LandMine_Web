@@ -741,7 +741,7 @@ class _MiningScreenState extends State<MiningScreen>
   Widget build(BuildContext context) {
     scene.scanning = tool == 'dig';
     scene.layingTrack = tool == 'rail';
-    scene.panning = tool == 'pan';
+    scene.panning = tool == 'pan' || tool == 'inspect';
     scene.selected = selected;
     scene.playbackSpeed = speed;
     scene.sound = sound;
@@ -1312,20 +1312,20 @@ class _MiningScreenState extends State<MiningScreen>
       key: const ValueKey('minimap'),
       onTapDown: (details) => setState(
         () => scene.lookAt(
-          Point2(details.localPosition.dx / 96, details.localPosition.dy / 42),
+          Point2(details.localPosition.dx / 96, details.localPosition.dy / 78),
         ),
       ),
       child: Container(
         width: 98,
-        height: 44,
+        height: 80,
         decoration: BoxDecoration(border: Border.all(color: hudPaper)),
         child: CustomPaint(
           painter: MineMinimap(
             viewport: Rect.fromLTWH(
               position.x / 3000,
-              position.y / 1200,
+              position.y / 2400,
               view.x / 3000,
-              view.y / 1200,
+              view.y / 2400,
             ),
             mines: game.deposits
                 .where((d) => d.discovered)
