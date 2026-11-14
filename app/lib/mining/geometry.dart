@@ -1,7 +1,7 @@
 import 'dart:math';
 
 class MapGeometry {
-  static const aspect = 2.5, scale = 2.0;
+  static const aspect = 1.25, scale = 2.0;
   static const factoryCenter = Point2(.5, .5);
 }
 
