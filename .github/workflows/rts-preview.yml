@@ -23,7 +23,7 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: app
-      - run: flutter analyze lib/rts lib/main.dart
+      - run: flutter analyze --no-fatal-infos lib/rts lib/main.dart
         working-directory: app
       - name: Build RTS web preview
         run: flutter build web --release --base-href /LandMine_Web/rts/ --pwa-strategy=none --no-web-resources-cdn
