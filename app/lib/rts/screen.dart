@@ -18,7 +18,7 @@ class RtsScreen extends StatefulWidget {
 class _RtsState extends State<RtsScreen> {
   final soldiers=<Soldier>[];
   final bases=<Offset>[const Offset(260,260)];
-  final rocks=<Offset>[const Offset(480,220),const Offset(530,290),const Offset(470,370),const Offset(1150,750),const Offset(1250,800)];
+  final rocks=<Offset>[const Offset(425,165),const Offset(485,200),const Offset(510,265),const Offset(495,335),const Offset(435,395),const Offset(380,420),const Offset(1150,750),const Offset(1250,800)];
   final chosen=<Soldier>{};
   late final Timer timer;
   Offset camera=Offset.zero;
@@ -132,7 +132,12 @@ class _Map extends CustomPainter{
     p.color=const Color(0x225ea487);
     for(var x=0.0;x<1800;x+=80)c.drawLine(Offset(x,0),Offset(x,1200),p);
     for(var y=0.0;y<1200;y+=80)c.drawLine(Offset(0,y),Offset(1800,y),p);
-    for(final o in rocks){p.color=Colors.cyanAccent;c.drawCircle(o,27,p);}
+    for(final o in rocks){
+      final crystal=Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx+18,o.dy-15)..lineTo(o.dx+27,o.dy+15)..lineTo(o.dx,o.dy+32)..lineTo(o.dx-25,o.dy+12)..lineTo(o.dx-16,o.dy-18)..close();
+      p.color=const Color(0xff0a6177);c.drawPath(crystal,p);
+      p.color=const Color(0xff39e4ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx+18,o.dy-15)..lineTo(o.dx,o.dy+32)..close(),p);
+      p.color=const Color(0xffa0f6ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx-16,o.dy-18)..lineTo(o.dx,o.dy+32)..close(),p);
+    }
     for(final b in bases){
       p.color=Colors.blueGrey;c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:b,width:120,height:90),const Radius.circular(8)),p);
       label(c,'COMMAND',b+const Offset(-42,-8),Colors.white);
