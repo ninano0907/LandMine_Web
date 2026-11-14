@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mine_path/mining/content.dart';
-import 'package:mine_path/mining/economy.dart';
 import 'package:mine_path/mining/profile.dart';
 import 'package:mine_path/mining/simulation.dart';
 
