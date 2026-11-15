@@ -102,7 +102,65 @@ class CombatAi {
       }
     } else if(unit.mode==CombatMode.attack && distance<=360 && unit.goal==null) {
       final delta=target.p-unit.p;
-      if(delta.distance>0)unit.p+=delta/delta.distance*unit.speed;
+      if(delta.distance>0)unit.p=Terrain.advance(unit.p,target.p,unit.speed);
+    }
+  }
+}
+
+class Terrain {
+  static const world=Size(1800,1200);
+  static final obstacles=<Rect>[
+    const Rect.fromLTWH(620,70,270,240),
+    const Rect.fromLTWH(1010,80,360,230),
+    const Rect.fromLTWH(1320,430,330,220),
+    const Rect.fromLTWH(600,720,310,320),
+    const Rect.fromLTWH(1050,930,440,210),
+  ];
+  static bool blocked(Offset point){
+    if(point.dx<12||point.dy<12||point.dx>1788||point.dy>1188)return true;
+    return obstacles.any((r)=>r.inflate(12).contains(point));
+  }
+  static Offset advance(Offset from,Offset toward,double speed){
+    final delta=toward-from;
+    if(delta.distance<0.01)return from;
+    final step=delta/delta.distance*(delta.distance<speed?delta.distance:speed);
+    final direct=from+step;
+    if(!blocked(direct))return direct;
+    final x=Offset(from.dx+step.dx,from.dy);
+    if(!blocked(x))return x;
+    final y=Offset(from.dx,from.dy+step.dy);
+    if(!blocked(y))return y;
+    return from;
+  }
+  static void paint(Canvas c){
+    final p=Paint();
+    p.color=const Color(0xff415541);
+    c.drawRect(const Rect.fromLTWH(0,0,1800,1200),p);
+    // Worn paths connect the main base to the eastern and southern expansions.
+    p..color=const Color(0xff82795d)..style=PaintingStyle.stroke..strokeWidth=95..strokeCap=StrokeCap.round;
+    final road=Path()..moveTo(270,275)..lineTo(510,470)..lineTo(960,520)..lineTo(1190,760);
+    c.drawPath(road,p);
+    p..color=const Color(0xffa0936e)..strokeWidth=65;
+    c.drawPath(road,p);
+    p.style=PaintingStyle.fill;
+    for(var i=0;i<85;i++){
+      final x=((i*137+41)%1760).toDouble()+20;
+      final y=((i*89+17)%1160).toDouble()+20;
+      final at=Offset(x,y);
+      if(blocked(at))continue;
+      p.color=i.isEven?const Color(0xff566b4b):const Color(0xff314b3c);
+      c.drawCircle(at,5+(i%4)*3.0,p);
+    }
+    for(var i=0;i<obstacles.length;i++){
+      final r=obstacles[i];
+      p.color=i==2?const Color(0xff244e61):const Color(0xff252f2c);
+      c.drawRRect(RRect.fromRectAndRadius(r,const Radius.circular(42)),p);
+      p.color=i==2?const Color(0xff39758a):const Color(0xff677064);
+      c.drawRRect(RRect.fromRectAndRadius(r.deflate(17),const Radius.circular(33)),p);
+      if(i!=2){
+        p.color=const Color(0xff92917b);
+        c.drawRRect(RRect.fromRectAndRadius(r.deflate(42),const Radius.circular(22)),p);
+      }
     }
   }
 }
@@ -162,7 +220,7 @@ class _RtsState extends State<RtsScreen> {
         if(s.goal!=null){
           final delta=s.goal!-s.p;
           if(delta.distance<4){s.p=s.goal!;s.goal=null;}
-          else{s.p+=delta/delta.distance*3.5;}
+          else{s.p=Terrain.advance(s.p,s.goal!,3.5);}
         }else if(!s.marine && s.ore!=null){
           var index=s.ore!;
           if(!s.carrying && oreRemaining[index]<=0){
@@ -383,6 +441,7 @@ class _Map extends CustomPainter{
   @override void paint(Canvas c,Size size){
     c.drawColor(const Color(0xff30473d),BlendMode.src);
     c.save();c.translate(-camera.dx,-camera.dy);
+    Terrain.paint(c);
     final p=Paint();
     p.color = const Color(0x225ea487);
     for(var x=0.0;x<1800;x+=80)c.drawLine(Offset(x,0),Offset(x,1200),p);
@@ -436,9 +495,14 @@ class _MiniMap extends CustomPainter {
   final Offset camera;
   final Size view;
   @override void paint(Canvas canvas,Size size){
-    canvas.drawColor(const Color(0xff30473d),BlendMode.src);
+    canvas.drawColor(const Color(0xff415541),BlendMode.src);
     final sx=size.width/1800,sy=size.height/1200;
     final p=Paint();
+    for(var i=0;i<Terrain.obstacles.length;i++){
+      final r=Terrain.obstacles[i];
+      p.color=i==2?const Color(0xff39758a):const Color(0xff92917b);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(r.left*sx,r.top*sy,r.width*sx,r.height*sy),const Radius.circular(3)),p);
+    }
     for(final rock in rocks){
       p.color=Colors.cyanAccent;
       canvas.drawCircle(Offset(rock.dx*sx,rock.dy*sy),3,p);
