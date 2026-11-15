@@ -7,7 +7,7 @@ enum AttackType { antiLarge, antiSmall, balanced }
 enum CombatMode { attack, hold, move }
 
 /// Enemy behavior profiles, assigned afresh for each match.
-enum BotStyle { aggressive, defensive, economic }
+enum BotStrategy { preserve, raid }
 
 double damageMultiplier(AttackType attack, UnitSize target) {
   if (attack == AttackType.balanced) return 1.0;
@@ -303,7 +303,10 @@ class _RtsState extends State<RtsScreen> {
     Soldier(const Offset(920,470),true),
     Soldier(const Offset(990,420),true),
   ];
-  final botStyles=<BotStyle>[BotStyle.aggressive,BotStyle.defensive,BotStyle.economic];
+  final botStrategies=<Soldier,BotStrategy>{};
+  final botReserves=<Soldier,int>{};
+  final botRiskTolerance=<Soldier,double>{};
+  int botDecisionTicks=0;
   final botHomes=<Offset>[
     const Offset(850,420),const Offset(920,470),const Offset(990,420),
   ];
@@ -317,9 +320,12 @@ class _RtsState extends State<RtsScreen> {
   Offset? trainingAt;
   int ticks=0;
   _RtsState() {
-    botStyles.shuffle();
     for(var i=0;i<enemies.length;i++) {
-      enemies[i].mode=botStyles[i]==BotStyle.defensive?CombatMode.hold:CombatMode.attack;
+      final bot=enemies[i];
+      botReserves[bot]=180+i*75;
+      botRiskTolerance[bot]=0.25+i*0.25;
+      botStrategies[bot]=BotStrategy.preserve;
+      bot.mode=CombatMode.hold;
     }
     for(var i=0;i<4;i++) soldiers.add(Soldier(Offset(200+i*30.0,340),false));
     fog.update(soldiers,bases,barracks);
@@ -334,25 +340,37 @@ class _RtsState extends State<RtsScreen> {
         soldiers.add(Soldier(origin+const Offset(80,60),queue!));
         queue=null;trainingAt=null;ticks=0;
       }
-      // Defensive bots hold their home perimeter. Economic bots avoid
-      // unnecessary fights; aggressive bots pursue targets farther away.
-      for(var i=0;i<enemies.length;i++) {
-        final bot=enemies[i];
-        final home=botHomes[i];
-        if(botStyles[i]==BotStyle.defensive) {
-          bot.mode=CombatMode.hold;
+      // Re-evaluate each bot's objective from its resources, local threat,
+      // and appetite for risk. No permanent attack/defense role is assigned.
+      if(++botDecisionTicks>=80) {
+        botDecisionTicks=0;
+        for(final bot in enemies) {
+          final home=botHomes[botReserves.keys.toList().indexOf(bot).clamp(0,2)];
+          final threat=soldiers.where((u)=>u.marine &&
+              (u.p-home).distance<260).length;
+          final reserve=botReserves[bot]??0;
+          final tolerance=botRiskTolerance[bot]??0.5;
+          final scarce=reserve<230;
+          // With scarce resources, cautious bots preserve their bank;
+          // risk-takers instead attempt a raid to recover economically.
+          botStrategies[bot]=threat>0 && tolerance<0.8
+              ?BotStrategy.preserve
+              :scarce && tolerance>=0.5
+                  ?BotStrategy.raid
+                  :reserve>=350 && tolerance>=0.65
+                      ?BotStrategy.raid
+                      :BotStrategy.preserve;
+        }
+      }
+      for(final bot in enemies) {
+        final strategy=botStrategies[bot]??BotStrategy.preserve;
+        bot.mode=strategy==BotStrategy.raid?CombatMode.attack:CombatMode.hold;
+        if(strategy==BotStrategy.preserve) {
           bot.goal=null;
-          if((bot.p-home).distance>155) {
+          final home=botHomes[botReserves.keys.toList().indexOf(bot).clamp(0,2)];
+          if((bot.p-home).distance>125) {
             bot.p=Terrain.advance(bot.p,home,bot.speed);
           }
-        } else if(botStyles[i]==BotStyle.economic) {
-          bot.mode=CombatMode.hold;
-          bot.goal=null;
-          if((bot.p-home).distance>95) {
-            bot.p=Terrain.advance(bot.p,home,bot.speed);
-          }
-        } else {
-          bot.mode=CombatMode.attack;
         }
       }
       for(final unit in [...soldiers,...enemies]) {
