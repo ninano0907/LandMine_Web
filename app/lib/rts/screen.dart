@@ -14,7 +14,31 @@ double damageMultiplier(AttackType attack, UnitSize target) {
   return target == UnitSize.small ? 1.5 : target == UnitSize.medium ? 1.0 : 0.7;
 }
 
-class Soldier {
+abstract class CombatUnit {
+  Offset get p;
+  set p(Offset value);
+  Offset? get goal;
+  set goal(Offset? value);
+  int get hp;
+  set hp(int value);
+  int get cooldown;
+  set cooldown(int value);
+  CombatMode get mode;
+  set mode(CombatMode value);
+  CombatUnit? get attackTarget;
+  set attackTarget(CombatUnit? value);
+  Offset? get home;
+  set home(Offset? value);
+  bool get assisting;
+  set assisting(bool value);
+  UnitSize get size;
+  AttackType get attackType;
+  double get range;
+  double get speed;
+  int get damage;
+}
+
+class Soldier extends CombatUnit {
   Soldier(this.p, this.marine);
   Offset p;
   Offset? goal;
@@ -25,11 +49,63 @@ class Soldier {
   UnitSize size = UnitSize.small;
   AttackType attackType = AttackType.antiLarge;
   int cooldown = 0;
-  Soldier? attackTarget;
+  CombatUnit? attackTarget;
+  @override double get range => 145;
+  @override double get speed => 2.5;
+  @override int get damage => 10;
   CombatMode mode = CombatMode.attack;
   Offset? home;
   bool assisting = false;
 }
+class CombatAi {
+  static void tick(CombatUnit unit, {required List<Soldier> friendly, required List<Soldier> hostile}) {
+    if(unit.cooldown>0)unit.cooldown--;
+    final assigned=unit.attackTarget;
+    CombatUnit? target;
+    if(assigned!=null && hostile.contains(assigned) && assigned.hp>0) {
+      target=assigned;
+    } else {
+      unit.attackTarget=null;
+      var nearest=double.infinity;
+      for(final candidate in hostile) {
+        if(candidate.hp<=0)continue;
+        final distance=(candidate.p-unit.p).distance;
+        final detect=unit.mode==CombatMode.hold?unit.range:360.0;
+        if(distance<=detect && distance<nearest) {
+          nearest=distance;target=candidate;
+        }
+      }
+    }
+    if(target==null) {
+      if(unit.assisting && unit.home!=null) {
+        unit.goal=unit.home;
+        unit.assisting=false;
+      }
+      return;
+    }
+    final distance=(target.p-unit.p).distance;
+    if(distance<=unit.range) {
+      if(unit.cooldown==0) {
+        target.hp-=(unit.damage*damageMultiplier(unit.attackType,target.size)).round();
+        unit.cooldown=12;
+        if(target.hp>0) {
+          for(final ally in friendly) {
+            if(identical(ally,unit)||!ally.marine||ally.hp<=0||ally.mode==CombatMode.hold||ally.attackTarget!=null)continue;
+            if((ally.p-unit.p).distance<=300) {
+              ally.home ??= ally.p;
+              ally.assisting=true;
+              ally.attackTarget=target;
+            }
+          }
+        }
+      }
+    } else if(unit.mode==CombatMode.attack && distance<=360 && unit.goal==null) {
+      final delta=target.p-unit.p;
+      if(delta.distance>0)unit.p+=delta/delta.distance*unit.speed;
+    }
+  }
+}
+
 class RtsScreen extends StatefulWidget {
   const RtsScreen({super.key});
   @override
@@ -72,51 +148,7 @@ class _RtsState extends State<RtsScreen> {
       for(final unit in [...soldiers,...enemies]) {
         if(unit.cooldown>0)unit.cooldown--;
         if(!unit.marine || unit.hp<=0)continue;
-        final friendly=enemies.contains(unit)?enemies:soldiers;
-        final hostile=enemies.contains(unit)?soldiers:enemies;
-        final assigned=unit.attackTarget;
-        Soldier? target;
-        if(assigned!=null && hostile.contains(assigned) && assigned.hp>0) {
-          target=assigned;
-        } else {
-          unit.attackTarget=null;
-          var nearest=double.infinity;
-          for(final candidate in hostile) {
-            if(candidate.hp<=0)continue;
-            final distance=(candidate.p-unit.p).distance;
-            final detect=unit.mode==CombatMode.hold?145.0:360.0;
-            if(distance<=detect && distance<nearest) {
-              nearest=distance;target=candidate;
-            }
-          }
-        }
-        if(target==null) {
-          if(unit.assisting && unit.home!=null) {
-            unit.goal=unit.home;
-            unit.assisting=false;
-          }
-          continue;
-        }
-        final distance=(target.p-unit.p).distance;
-        if(distance<=145) {
-          if(unit.cooldown==0) {
-            target.hp-=(10*damageMultiplier(unit.attackType,target.size)).round();
-            unit.cooldown=12;
-            if(target.hp>0) {
-              for(final ally in friendly) {
-                if(identical(ally,target)||!ally.marine||ally.hp<=0||ally.mode==CombatMode.hold||ally.attackTarget!=null)continue;
-                if((ally.p-unit.p).distance<=300 && (ally.p-target.p).distance<=300) {
-                  ally.home ??= ally.p;
-                  ally.assisting=true;
-                  ally.attackTarget=target;
-                }
-              }
-            }
-          }
-        } else if(unit.mode==CombatMode.attack && distance<=360 && unit.goal==null) {
-          final delta=target.p-unit.p;
-          if(delta.distance>0)unit.p+=delta/delta.distance*2.5;
-        }
+        CombatAi.tick(unit, friendly: enemies.contains(unit)?enemies:soldiers, hostile: enemies.contains(unit)?soldiers:enemies);
       }
       soldiers.removeWhere((u)=>u.hp<=0);
       enemies.removeWhere((u)=>u.hp<=0);
