@@ -59736,41 +59736,41 @@ $0(){var s=this.a
 s.at=new A.k(B.c.cG(s.at.a+this.b,0,1400),B.c.cG(s.at.b+this.c,0,900))},
 $S:0}
 A.a3N.prototype={
-$2(a,b){var s,r,q,p,o,n,m,l,k=null,j=this.a
-j.ch=new A.G(b.b,B.c.cG(b.d-174,1,1/0))
+$2(a,b){var s,r,q,p,o,n,m,l,k=null,j="Engineer",i=this.a
+i.ch=new A.G(b.b,B.c.cG(b.d-174,1,1/0))
 s=t.nA
-r=A.zi(k,A.W4(A.c([B.v0,B.Nc,B.Io,A.uC("\ubbf8\ub124\ub784: "+j.CW,B.Kn,k),B.v0],s),B.aS),B.yt,k,48,k,k,k)
-q=j.y
-p=A.mX(A.Ai(B.a1,A.zq(k,k,k,new A.Gm(j.f,j.z,j.d,j.e,j.w,q,j.at,j.ax,j.ay,k),B.v_),B.av,!1,k,k,k,k,k,k,k,k,k,new A.a3w(j),new A.a3x(j),new A.a3y(j),k,k,k,k,k,k,k,new A.a3F(j),k,k,k),1)
-o=A.mX(A.abj(new A.a3G(j)),2)
+r=A.zi(k,A.W4(A.c([B.v0,B.Nc,B.Io,A.uC("\ubbf8\ub124\ub784: "+i.CW,B.Kn,k),B.v0],s),B.aS),B.yt,k,48,k,k,k)
+q=i.y
+p=A.mX(A.Ai(B.a1,A.zq(k,k,k,new A.Gm(i.f,i.z,i.d,i.e,i.w,q,i.at,i.ax,i.ay,k),B.v_),B.av,!1,k,k,k,k,k,k,k,k,k,new A.a3w(i),new A.a3x(i),new A.a3y(i),k,k,k,k,k,k,k,new A.a3F(i),k,k,k),1)
+o=A.mX(A.abj(new A.a3G(i)),2)
 n=A.a9U(B.eo)
-m=j.r!=null
+m=i.r!=null
 if(m)l="\ubcd1\uc601"
-else if(j.Q!=null)l="\ubcf8\ubd80"
+else if(i.Q!=null)l="\ubcf8\ubd80"
 else{l=q.a
 if(l===0)l="\uc120\ud0dd \uc5c6\uc74c"
-else if(l===1)l=q.gU(0).c?"\ubcf4\ubcd1":"\uad11\ubd80"
+else if(l===1)l=q.gU(0).c?"Soldier":j
 else l="\uc720\ub2db "+l+"\uae30"}l=A.uC(l,B.JL,B.ch)
-if(m)m="\ubcf4\ubcd1 \uc0dd\uc0b0"
-else if(j.Q!=null)m="\uad11\ubd80 \uc0dd\uc0b0"
+if(m)m="Soldier \uc0dd\uc0b0"
+else if(i.Q!=null)m="Engineer \uc0dd\uc0b0"
 else if(q.a===0)m="\uc720\ub2db\uc774\ub098 \uae30\uc9c0\ub97c \uc120\ud0dd\ud558\uc138\uc694"
 else m=q.dv(0,new A.a3H())?"\ucc44\uad74 / \uc774\ub3d9 / \ud655\uc7a5":"\uc774\ub3d9 / \uc790\ub3d9 \uacf5\uaca9"
 m=A.c([l,B.Ie,A.uC(m,B.vi,B.ch)],s)
-l=j.cx
-if(l!=null)m.push(A.uC("\uc0dd\uc0b0 \uc911: "+(l?"\ubcf4\ubcd1":"\uad11\ubd80"),B.L1,k))
+l=i.cx
+if(l!=null)m.push(A.uC("\uc0dd\uc0b0 \uc911: "+(l?"Soldier":j),B.L1,k))
 n=A.mX(A.zi(B.b7,A.a71(m,B.bs,B.pm),k,new A.eI(B.jI,k,n,k,k,k,B.bb),k,k,k,k),2)
 m=A.a9U(B.eo)
 l=A.c([],s)
-if(j.Q!=null)l.push(j.fl("\uad11\ubd80 50",new A.a3I(j)))
-if(j.r!=null)l.push(j.fl("\ubcf4\ubcd1 75",new A.a3J(j)))
-if(q.dv(0,new A.a3K()))B.b.J(l,A.c([j.fl("\ubcf8\ubd80 400",j.gYM()),j.fl("\ubcd1\uc601 200",j.gYK())],s))
-if(q.dv(0,new A.a3L()))B.b.J(l,A.c([j.fl("\ud640\ub4dc",new A.a3M(j)),j.fl("\uc5b4\ud0dd",new A.a3z(j))],s))
-if(q.a!==0)l.push(j.fl("\uc815\uc9c0",new A.a3A(j)))
-if(j.Q==null&&j.r==null&&q.a===0)l.push(B.Nb)
-l.push(j.fl("\u25c0",new A.a3B(j)))
-l.push(j.fl("\u25b2",new A.a3C(j)))
-l.push(j.fl("\u25b6",new A.a3D(j)))
-l.push(j.fl("\u25bc",new A.a3E(j)))
+if(i.Q!=null)l.push(i.fl("Engineer 50",new A.a3I(i)))
+if(i.r!=null)l.push(i.fl("Soldier 75",new A.a3J(i)))
+if(q.dv(0,new A.a3K()))B.b.J(l,A.c([i.fl("\ubcf8\ubd80 400",i.gYM()),i.fl("\ubcd1\uc601 200",i.gYK())],s))
+if(q.dv(0,new A.a3L()))B.b.J(l,A.c([i.fl("\ud640\ub4dc",new A.a3M(i)),i.fl("\uc5b4\ud0dd",new A.a3z(i))],s))
+if(q.a!==0)l.push(i.fl("\uc815\uc9c0",new A.a3A(i)))
+if(i.Q==null&&i.r==null&&q.a===0)l.push(B.Nb)
+l.push(i.fl("\u25c0",new A.a3B(i)))
+l.push(i.fl("\u25b2",new A.a3C(i)))
+l.push(i.fl("\u25b6",new A.a3D(i)))
+l.push(i.fl("\u25bc",new A.a3E(i)))
 return A.a71(A.c([r,p,A.zi(k,A.W4(A.c([o,B.v1,n,B.v1,A.mX(A.zi(k,A.a71(A.c([B.N9,A.mX(new A.Dd(A.acV(l,4,4),k),1)],s),B.br,B.aS),k,new A.eI(B.jI,k,m,k,k,k,B.bb),k,k,B.Ac,k),3)],s),B.aS),B.yC,k,126,k,B.Ad,k)],s),B.bs,B.aS)},
 $S:394}
 A.a3F.prototype={
