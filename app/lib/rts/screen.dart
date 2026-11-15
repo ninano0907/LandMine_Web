@@ -165,6 +165,45 @@ class Terrain {
   }
 }
 
+class FogOfWar {
+  static const cell=40.0;
+  static const columns=45, rows=30;
+  final explored=List<bool>.filled(columns*rows,false);
+  final visible=List<bool>.filled(columns*rows,false);
+  void update(List<Soldier> units,List<Offset> bases,List<Offset> barracks){
+    visible.fillRange(0,visible.length,false);
+    for(final u in units){if(u.hp>0)reveal(u.p,190);}
+    for(final b in bases)reveal(b,245);
+    for(final b in barracks)reveal(b,170);
+  }
+  void reveal(Offset at,double radius){
+    final left=((at.dx-radius)/cell).floor().clamp(0,columns-1);
+    final right=((at.dx+radius)/cell).floor().clamp(0,columns-1);
+    final top=((at.dy-radius)/cell).floor().clamp(0,rows-1);
+    final bottom=((at.dy+radius)/cell).floor().clamp(0,rows-1);
+    for(var y=top;y<=bottom;y++)for(var x=left;x<=right;x++){
+      final center=Offset((x+0.5)*cell,(y+0.5)*cell);
+      if((center-at).distance<=radius){
+        final index=y*columns+x;
+        visible[index]=true;explored[index]=true;
+      }
+    }
+  }
+  bool canSee(Offset at){
+    final x=(at.dx/cell).floor(),y=(at.dy/cell).floor();
+    return x>=0&&x<columns&&y>=0&&y<rows&&visible[y*columns+x];
+  }
+  void paint(Canvas canvas,{double sx=1,double sy=1}){
+    final p=Paint();
+    for(var y=0;y<rows;y++)for(var x=0;x<columns;x++){
+      final index=y*columns+x;
+      if(visible[index])continue;
+      p.color=explored[index]?const Color(0xb9000000):const Color(0xff080e13);
+      canvas.drawRect(Rect.fromLTWH(x*cell*sx,y*cell*sy,cell*sx+0.5,cell*sy+0.5),p);
+    }
+  }
+}
+
 class RtsScreen extends StatefulWidget {
   const RtsScreen({super.key});
   @override
@@ -172,6 +211,7 @@ class RtsScreen extends StatefulWidget {
 }
 class _RtsState extends State<RtsScreen> {
   final soldiers=<Soldier>[];
+  final fog=FogOfWar();
   final bases=<Offset>[const Offset(260,260)];
   final barracks=<Offset>[];
   Offset? selectedBarracks;
@@ -194,6 +234,7 @@ class _RtsState extends State<RtsScreen> {
   int ticks=0;
   _RtsState() {
     for(var i=0;i<4;i++) soldiers.add(Soldier(Offset(200+i*30.0,340),false));
+    fog.update(soldiers,bases,barracks);
   }
   @override void initState(){super.initState();timer=Timer.periodic(const Duration(milliseconds:50),(_)=>step());}
   @override void dispose(){timer.cancel();super.dispose();}
@@ -213,6 +254,7 @@ class _RtsState extends State<RtsScreen> {
       soldiers.removeWhere((u)=>u.hp<=0);
       enemies.removeWhere((u)=>u.hp<=0);
       chosen.removeWhere((u)=>!soldiers.contains(u));
+      fog.update(soldiers,bases,barracks);
       for(final u in soldiers){
         if(u.attackTarget!=null && !enemies.contains(u.attackTarget))u.attackTarget=null;
       }
@@ -357,7 +399,7 @@ class _RtsState extends State<RtsScreen> {
             }
             begin=null;end=null;
           }),
-          child:CustomPaint(size:Size.infinite,painter:_Map(soldiers,bases,rocks,chosen,camera,begin,end,enemies,barracks)))),
+          child:CustomPaint(size:Size.infinite,painter:_Map(soldiers,bases,rocks,chosen,camera,begin,end,enemies,barracks,fog)))),
         Container(
           height:126,
           padding:const EdgeInsets.all(5),
@@ -377,7 +419,7 @@ class _RtsState extends State<RtsScreen> {
                 );
               }),
               child:ClipRect(child:CustomPaint(
-                painter:_MiniMap(soldiers,bases,rocks,camera,view,barracks),
+                painter:_MiniMap(soldiers,bases,rocks,camera,view,barracks,fog),
                 child:const SizedBox.expand(),
               )),
               );
@@ -430,7 +472,8 @@ class _RtsState extends State<RtsScreen> {
   );
 }
 class _Map extends CustomPainter{
-  _Map(this.units,this.bases,this.rocks,this.selected,this.camera,this.start,this.end,this.enemies,this.barracks);
+  _Map(this.units,this.bases,this.rocks,this.selected,this.camera,this.start,this.end,this.enemies,this.barracks,this.fog);
+  final FogOfWar fog;
   final List<Offset> barracks;
   final List<Soldier> enemies;
   final List<Soldier> units;
@@ -461,7 +504,9 @@ class _Map extends CustomPainter{
       c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:b,width:100,height:80),const Radius.circular(6)),p);
       label(c,'BARRACKS',b+const Offset(-35,-8),Colors.white);
     }
+    fog.paint(c);
     for(final u in [...units,...enemies]){
+      if(enemies.contains(u)&&!fog.canSee(u.p))continue;
       p.color=enemies.contains(u)?Colors.red:(u.marine?Colors.blue:Colors.amber);
       c.drawCircle(u.p,13,p);
       if(selected.contains(u)){
@@ -488,7 +533,8 @@ class _Map extends CustomPainter{
 }
 
 class _MiniMap extends CustomPainter {
-  _MiniMap(this.units,this.bases,this.rocks,this.camera,this.view,this.barracks);
+  _MiniMap(this.units,this.bases,this.rocks,this.camera,this.view,this.barracks,this.fog);
+  final FogOfWar fog;
   final List<Offset> barracks;
   final List<Soldier> units;
   final List<Offset> bases,rocks;
@@ -519,6 +565,7 @@ class _MiniMap extends CustomPainter {
       p.color=unit.marine?Colors.lightBlue:Colors.amber;
       canvas.drawCircle(Offset(unit.p.dx*sx,unit.p.dy*sy),2,p);
     }
+    fog.paint(canvas,sx:sx,sy:sy);
     p..color=Colors.white..style=PaintingStyle.stroke..strokeWidth=1.5;
     canvas.drawRect(Rect.fromLTWH(camera.dx*sx,camera.dy*sy,view.width*sx,view.height*sy),p);
   }
