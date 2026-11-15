@@ -115,12 +115,14 @@ class CombatAi {
 
 class Terrain {
   static const world=Size(1800,1200);
+  // Mirrored cliffs: each faction has equivalent approach corridors.
   static final obstacles=<Rect>[
-    const Rect.fromLTWH(620,70,270,240),
-    const Rect.fromLTWH(1010,80,360,230),
-    const Rect.fromLTWH(1320,430,330,220),
-    const Rect.fromLTWH(600,720,310,320),
-    const Rect.fromLTWH(1050,930,440,210),
+    for (final x in [690.0, 1030.0])
+      for (final y in [130.0, 910.0])
+        Rect.fromLTWH(x, y, 80, 160),
+    for (final x in [780.0, 940.0])
+      for (final y in [490.0, 650.0])
+        Rect.fromLTWH(x, y, 80, 60),
   ];
   static bool blocked(Offset point){
     if(point.dx<12||point.dy<12||point.dx>1788||point.dy>1188)return true;
@@ -293,24 +295,22 @@ class RtsScreen extends StatefulWidget {
 class _RtsState extends State<RtsScreen> {
   final soldiers=<Soldier>[];
   final fog=FogOfWar();
-  final bases=<Offset>[const Offset(260,260)];
+  final bases=<Offset>[MissionMap.starts.first];
   final barracks=<Offset>[];
   Offset? selectedBarracks;
   final rocks=MissionMap.minerals(1);
   late final List<int> oreRemaining=List<int>.filled(rocks.length,1500);
   final chosen=<Soldier>{};
   final enemies=<Soldier>[
-    Soldier(const Offset(850,420),true),
-    Soldier(const Offset(920,470),true),
-    Soldier(const Offset(990,420),true),
+    for (final start in MissionMap.starts.skip(1))
+      Soldier(start + Offset(start.dx < 900 ? 70 : -70,
+          start.dy < 600 ? 70 : -70), true),
   ];
   final botStrategies=<Soldier,BotStrategy>{};
   final botReserves=<Soldier,int>{};
   final botRiskTolerance=<Soldier,double>{};
   int botDecisionTicks=0;
-  final botHomes=<Offset>[
-    const Offset(850,420),const Offset(920,470),const Offset(990,420),
-  ];
+  final botHomes=<Soldier,Offset>{};
   Offset? selectedBase;
   late final Timer timer;
   Offset camera=Offset.zero;
@@ -323,12 +323,14 @@ class _RtsState extends State<RtsScreen> {
   _RtsState() {
     for(var i=0;i<enemies.length;i++) {
       final bot=enemies[i];
+      botHomes[bot]=MissionMap.starts[i+1];
       botReserves[bot]=180+i*75;
       botRiskTolerance[bot]=0.25+i*0.25;
       botStrategies[bot]=BotStrategy.preserve;
       bot.mode=CombatMode.hold;
     }
-    for(var i=0;i<4;i++) soldiers.add(Soldier(Offset(200+i*30.0,340),false));
+    for(var i=0;i<4;i++) soldiers.add(
+      Soldier(MissionMap.starts.first+Offset(50+i*18.0,70),false));
     fog.update(soldiers,bases,barracks);
   }
   @override void initState(){super.initState();timer=Timer.periodic(const Duration(milliseconds:50),(_)=>step());}
@@ -346,7 +348,7 @@ class _RtsState extends State<RtsScreen> {
       if(++botDecisionTicks>=80) {
         botDecisionTicks=0;
         for(final bot in enemies) {
-          final home=botHomes[botReserves.keys.toList().indexOf(bot).clamp(0,2)];
+          final home=botHomes[bot]!;
           final threat=soldiers.where((u)=>u.marine &&
               (u.p-home).distance<260).length;
           final reserve=botReserves[bot]??0;
