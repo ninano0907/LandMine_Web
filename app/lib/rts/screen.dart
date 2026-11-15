@@ -1,6 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+enum UnitSize { small, medium, large }
+
+enum AttackType { antiLarge, antiSmall, balanced }
+
+double damageMultiplier(AttackType attack, UnitSize target) {
+  if (attack == AttackType.balanced) return 1.0;
+  if (attack == AttackType.antiLarge) {
+    return target == UnitSize.large ? 1.5 : target == UnitSize.medium ? 1.0 : 0.7;
+  }
+  return target == UnitSize.small ? 1.5 : target == UnitSize.medium ? 1.0 : 0.7;
+}
+
 class Soldier {
   Soldier(this.p, this.marine);
   Offset p;
@@ -9,6 +21,8 @@ class Soldier {
   int? ore;
   bool carrying = false;
   int hp = 100;
+  UnitSize size = UnitSize.small;
+  AttackType attackType = AttackType.antiLarge;
   int cooldown = 0;
 }
 class RtsScreen extends StatefulWidget {
@@ -57,7 +71,7 @@ class _RtsState extends State<RtsScreen> {
           if(d<distance){distance=d;nearest=target;}
         }
         if(nearest!=null && distance<=145 && unit.cooldown==0){
-          nearest.hp-=10;
+          nearest.hp-=(10 * damageMultiplier(unit.attackType, nearest.size)).round();
           unit.cooldown=12;
         }
       }
