@@ -329,12 +329,12 @@ class _RtsState extends State<RtsScreen> {
               alignment:Alignment.center,
               decoration:BoxDecoration(color:const Color(0xff243640),border:Border.all(color:Colors.blueGrey)),
               child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                Text(selectedBarracks!=null?'병영':selectedBase!=null?'본부':chosen.isEmpty?'선택 없음':chosen.length==1?(chosen.first.marine?'보병':'광부'):'유닛 ${chosen.length}기',
+                Text(selectedBarracks!=null?'병영':selectedBase!=null?'본부':chosen.isEmpty?'선택 없음':chosen.length==1?(chosen.first.marine?'보병':'엔지니어'):'유닛 ${chosen.length}기',
                   textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.bold)),
                 const SizedBox(height:5),
-                Text(selectedBarracks!=null?'보병 생산':selectedBase!=null?'광부 생산':chosen.isEmpty?'유닛이나 기지를 선택하세요':chosen.any((u)=>!u.marine)?'채굴 / 이동 / 확장':'이동 / 자동 공격',
+                Text(selectedBarracks!=null?'보병 생산':selectedBase!=null?'엔지니어 생산':chosen.isEmpty?'유닛이나 기지를 선택하세요':chosen.any((u)=>!u.marine)?'채굴 / 이동 / 확장':'이동 / 자동 공격',
                   textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70,fontSize:11)),
-                if(queue!=null)Text('생산 중: ${queue!?'보병':'광부'}',style:const TextStyle(color:Colors.cyanAccent,fontSize:11)),
+                if(queue!=null)Text('생산 중: ${queue!?'보병':'엔지니어'}',style:const TextStyle(color:Colors.cyanAccent,fontSize:11)),
               ]),
             )),
             const SizedBox(width:6),
@@ -344,7 +344,7 @@ class _RtsState extends State<RtsScreen> {
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 const Text('명령',style:TextStyle(color:Colors.white70,fontSize:11)),
                 Expanded(child:SingleChildScrollView(child:Wrap(spacing:4,runSpacing:4,children:[
-                  if(selectedBase!=null) _action('광부 50',()=>train(false)),
+                  if(selectedBase!=null) _action('엔지니어 50',()=>train(false)),
                   if(selectedBarracks!=null) _action('보병 75',()=>train(true)),
                   if(chosen.any((u)=>!u.marine)) ...[
                     _action('본부 400',buildBase),
