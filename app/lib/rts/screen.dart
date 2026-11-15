@@ -235,44 +235,54 @@ class Terrain {
     p..color=const Color(0xff9d8c65)..strokeWidth=54;
     c.drawPath(road,p);
     p.style=PaintingStyle.fill;
-    // Elevated mesas with faceted isometric cliff faces.
-    // Their footprints are exactly the rectangles used by pathfinding.
+    // Tile-aligned cliff shoulders soften the ground-to-cliff boundary.
+    // Use the same collision footprints; only their visual edges expand.
     for(final r in obstacles){
+      final shoulder=r.inflate(12);
+      c.drawRRect(
+        RRect.fromRectAndRadius(shoulder,const Radius.circular(14)),
+        p..color=const Color(0xff293f33));
+      c.drawRRect(
+        RRect.fromRectAndRadius(r.inflate(5),const Radius.circular(9)),
+        p..color=const Color(0xff4b614b));
+      // The elevated top and side faces share one continuous silhouette.
       const lift=24.0;
-      final face=Path()
+      final side=Path()
         ..moveTo(r.left,r.top)
-        ..lineTo(r.left+24,r.top-lift)
-        ..lineTo(r.right+24,r.top-lift)
+        ..lineTo(r.right,r.top)
+        ..lineTo(r.right,r.bottom)
+        ..lineTo(r.right+lift,r.bottom-lift)
+        ..lineTo(r.right+lift,r.top-lift)
+        ..lineTo(r.left+lift,r.top-lift)
+        ..close();
+      c.drawPath(side,p..color=const Color(0xff34483b));
+      final cap=Path()
+        ..moveTo(r.left,r.top)
+        ..lineTo(r.left+lift,r.top-lift)
+        ..lineTo(r.right+lift,r.top-lift)
+        ..lineTo(r.right,r.top)
+        ..close();
+      c.drawPath(cap,p..color=const Color(0xff8c997e));
+      final wall=Path()
+        ..moveTo(r.left,r.top)
         ..lineTo(r.right,r.top)
         ..lineTo(r.right,r.bottom)
         ..lineTo(r.left,r.bottom)
         ..close();
-      c.drawPath(face,p..color=const Color(0xff26382e));
-      final top=Path()
-        ..moveTo(r.left,r.top)
-        ..lineTo(r.left+24,r.top-lift)
-        ..lineTo(r.right+24,r.top-lift)
-        ..lineTo(r.right,r.top)
-        ..close();
-      c.drawPath(top,p..color=const Color(0xff89937a));
-      final ledge=Path()
-        ..moveTo(r.right,r.top)
-        ..lineTo(r.right+24,r.top-lift)
-        ..lineTo(r.right+24,r.bottom-lift)
-        ..lineTo(r.right,r.bottom)
-        ..close();
-      c.drawPath(ledge,p..color=const Color(0xff35483b));
-      c.drawRect(r.deflate(3),p..color=const Color(0xff63775b));
-      // Slanted strata make the elevation readable at mobile scale.
-      p..style=PaintingStyle.stroke..strokeWidth=3;
+      c.drawPath(wall,p..color=const Color(0xff61765a));
+      // Thin rocky strata and a rim highlight communicate the height.
+      p..style=PaintingStyle.stroke..strokeWidth=2;
+      c.drawLine(Offset(r.left+4,r.top+3),Offset(r.right-4,r.top+3),
+          p..color=const Color(0xffa0a88a));
       for(var j=0;j<3;j++){
         final y=r.top+30+j*37.0;
         if(y>=r.bottom-12)break;
         c.drawLine(Offset(r.left+8,y),Offset(r.right-8,y-12),
-          p..color=j.isEven?const Color(0xff8b9478):const Color(0xff425748));
+          p..color=j.isEven?const Color(0xff899477):const Color(0xff405747));
       }
       p.style=PaintingStyle.fill;
     }
+
     // Small stones and shrubs are visual-only, not additional collision.
     for(var i=0;i<140;i++){
       final at=Offset(((i*239+97)%1740).toDouble()+30,
