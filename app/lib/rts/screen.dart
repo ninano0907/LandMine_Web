@@ -452,7 +452,7 @@ class _RtsState extends State<RtsScreen> {
                   ],
                   if(chosen.any((u)=>u.marine)) ...[
                     _action('홀드',()=>setState((){for(final u in chosen.where((u)=>u.marine)){u.mode=CombatMode.hold;u.goal=null;u.attackTarget=null;u.assisting=false;u.home=null;}})),
-                    _action('어택',()=>setState((){for(final u in chosen.where((u)=>u.marine)){u.mode=CombatMode.attack;u.goal=null;u.attackTarget=null;u.mode=CombatMode.hold;u.assisting=false;u.home=null;}})),
+                    _action('어택',()=>setState((){for(final u in chosen.where((u)=>u.marine)){u.mode=CombatMode.attack;u.goal=null;u.attackTarget=null;u.assisting=false;u.home=null;}})),
                   ],
                   if(chosen.isNotEmpty) _action('정지',()=>setState((){
                     for(final u in chosen){u.goal=null;u.ore=null;u.carrying=false;u.miningTicks=0;u.attackTarget=null;}
