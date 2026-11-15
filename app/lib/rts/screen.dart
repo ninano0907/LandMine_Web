@@ -353,7 +353,7 @@ class _RtsState extends State<RtsScreen> {
       // and appetite for risk. No permanent attack/defense role is assigned.
       if(++botDecisionTicks>=80) {
         botDecisionTicks=0;
-        for(final bot in enemies) {
+        for(final bot in botHomes.keys) {
           final home=botHomes[bot]!;
           final threat=soldiers.where((u)=>u.marine &&
               (u.p-home).distance<260).length;
