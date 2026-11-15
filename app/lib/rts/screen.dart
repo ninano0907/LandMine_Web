@@ -24,6 +24,7 @@ class Soldier {
   UnitSize size = UnitSize.small;
   AttackType attackType = AttackType.antiLarge;
   int cooldown = 0;
+  Soldier? attackTarget;
 }
 class RtsScreen extends StatefulWidget {
   const RtsScreen({super.key});
@@ -70,9 +71,21 @@ class _RtsState extends State<RtsScreen> {
         final targets=enemies.contains(unit)?soldiers:soldiers.contains(unit)?enemies:<Soldier>[];
         Soldier? nearest;
         var distance=double.infinity;
-        for(final target in targets){
-          final d=(target.p-unit.p).distance;
-          if(d<distance){distance=d;nearest=target;}
+        final ordered=unit.attackTarget;
+        if(ordered!=null && targets.contains(ordered) && ordered.hp>0){
+          nearest=ordered;
+          distance=(ordered.p-unit.p).distance;
+        }
+        if(nearest==null){
+          for(final target in targets){
+            if(target.hp<=0)continue;
+            final d=(target.p-unit.p).distance;
+            if(d<distance && d<=360){distance=d;nearest=target;}
+          }
+        }
+        if(nearest!=null && distance>145 && distance<=360 && unit.goal==null){
+          final delta=nearest.p-unit.p;
+          if(delta.distance>0)unit.p+=delta/delta.distance*2.5;
         }
         if(nearest!=null && distance<=145 && unit.cooldown==0){
           nearest.hp-=(10 * damageMultiplier(unit.attackType, nearest.size)).round();
@@ -82,6 +95,9 @@ class _RtsState extends State<RtsScreen> {
       soldiers.removeWhere((u)=>u.hp<=0);
       enemies.removeWhere((u)=>u.hp<=0);
       chosen.removeWhere((u)=>!soldiers.contains(u));
+      for(final u in soldiers){
+        if(u.attackTarget!=null && !enemies.contains(u.attackTarget))u.attackTarget=null;
+      }
       for(final s in soldiers){
         if(s.goal!=null){
           final delta=s.goal!-s.p;
@@ -126,6 +142,11 @@ class _RtsState extends State<RtsScreen> {
     final p=at+camera;
     final hits=soldiers.where((s)=>(s.p-p).distance<22);
     if(hits.isNotEmpty){setState((){selectedBase=null;selectedBarracks=null;chosen..clear()..add(hits.first);});return;}
+    final enemyHits=enemies.where((e)=>(e.p-p).distance<22);
+    if(enemyHits.isNotEmpty && chosen.any((u)=>u.marine)){
+      setState((){for(final u in chosen.where((u)=>u.marine)){u.attackTarget=enemyHits.first;u.goal=null;}});
+      return;
+    }
     for(final base in bases){
       if((base-p).dx.abs()<60 && (base-p).dy.abs()<45){
         setState((){selectedBase=base;selectedBarracks=null;chosen.clear();});return;
@@ -141,6 +162,7 @@ class _RtsState extends State<RtsScreen> {
     setState((){
       var i=0;
       for(final s in chosen){
+        s.attackTarget=null;
         s.ore=ore>=0&&!s.marine?ore:null;
         s.carrying=false;
         s.goal=ore>=0&&!s.marine?rocks[ore]+const Offset(-20,0):p+Offset((i++%4)*18.0,0);
@@ -238,7 +260,7 @@ class _RtsState extends State<RtsScreen> {
                     _action('병영 200',buildBarracks),
                   ],
                   if(chosen.isNotEmpty) _action('정지',()=>setState((){
-                    for(final u in chosen){u.goal=null;u.ore=null;u.carrying=false;}
+                    for(final u in chosen){u.goal=null;u.ore=null;u.carrying=false;u.attackTarget=null;}
                   })),
                   if(selectedBase==null&&selectedBarracks==null&&chosen.isEmpty)const Text('유닛 또는 기지 선택',style:TextStyle(color:Colors.white54,fontSize:11)),
                   _action('◀',()=>moveCamera(-150,0)),
