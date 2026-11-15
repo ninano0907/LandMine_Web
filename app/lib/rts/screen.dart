@@ -6,6 +6,9 @@ enum UnitSize { small, medium, large }
 enum AttackType { antiLarge, antiSmall, balanced }
 enum CombatMode { attack, hold, move }
 
+/// Enemy behavior profiles, assigned afresh for each match.
+enum BotStyle { aggressive, defensive, economic }
+
 double damageMultiplier(AttackType attack, UnitSize target) {
   if (attack == AttackType.balanced) return 1.0;
   if (attack == AttackType.antiLarge) {
@@ -300,6 +303,10 @@ class _RtsState extends State<RtsScreen> {
     Soldier(const Offset(920,470),true),
     Soldier(const Offset(990,420),true),
   ];
+  final botStyles=<BotStyle>[BotStyle.aggressive,BotStyle.defensive,BotStyle.economic];
+  final botHomes=<Offset>[
+    const Offset(850,420),const Offset(920,470),const Offset(990,420),
+  ];
   Offset? selectedBase;
   late final Timer timer;
   Offset camera=Offset.zero;
@@ -310,6 +317,10 @@ class _RtsState extends State<RtsScreen> {
   Offset? trainingAt;
   int ticks=0;
   _RtsState() {
+    botStyles.shuffle();
+    for(var i=0;i<enemies.length;i++) {
+      enemies[i].mode=botStyles[i]==BotStyle.defensive?CombatMode.hold:CombatMode.attack;
+    }
     for(var i=0;i<4;i++) soldiers.add(Soldier(Offset(200+i*30.0,340),false));
     fog.update(soldiers,bases,barracks);
   }
@@ -322,6 +333,27 @@ class _RtsState extends State<RtsScreen> {
         final origin=trainingAt ?? bases.first;
         soldiers.add(Soldier(origin+const Offset(80,60),queue!));
         queue=null;trainingAt=null;ticks=0;
+      }
+      // Defensive bots hold their home perimeter. Economic bots avoid
+      // unnecessary fights; aggressive bots pursue targets farther away.
+      for(var i=0;i<enemies.length;i++) {
+        final bot=enemies[i];
+        final home=botHomes[i];
+        if(botStyles[i]==BotStyle.defensive) {
+          bot.mode=CombatMode.hold;
+          bot.goal=null;
+          if((bot.p-home).distance>155) {
+            bot.p=Terrain.advance(bot.p,home,bot.speed);
+          }
+        } else if(botStyles[i]==BotStyle.economic) {
+          bot.mode=CombatMode.hold;
+          bot.goal=null;
+          if((bot.p-home).distance>95) {
+            bot.p=Terrain.advance(bot.p,home,bot.speed);
+          }
+        } else {
+          bot.mode=CombatMode.attack;
+        }
       }
       for(final unit in [...soldiers,...enemies]) {
         if(unit.cooldown>0)unit.cooldown--;
