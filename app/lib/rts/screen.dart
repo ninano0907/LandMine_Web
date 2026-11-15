@@ -42,6 +42,8 @@ class Soldier extends CombatUnit {
   Soldier(this.p, this.marine);
   Offset p;
   Offset? goal;
+  List<Offset> waypoints=[];
+  Offset? routedGoal;
   bool marine;
   int? ore;
   bool carrying = false;
@@ -131,6 +133,62 @@ class Terrain {
     final y=Offset(from.dx,from.dy+step.dy);
     if(!blocked(y))return y;
     return from;
+  }
+  // A* on a coarse collision grid; unexplored terrain is still navigable.
+  static List<Offset> route(Offset from, Offset to){
+    const cell=30.0, cols=60, rows=40;
+    int id(int x,int y)=>y*cols+x;
+    Offset center(int k)=>Offset((k%cols+0.5)*cell,(k~/cols+0.5)*cell);
+    final sx=(from.dx/cell).floor().clamp(0,cols-1);
+    final sy=(from.dy/cell).floor().clamp(0,rows-1);
+    var tx=(to.dx/cell).floor().clamp(0,cols-1);
+    var ty=(to.dy/cell).floor().clamp(0,rows-1);
+    if(blocked(center(id(tx,ty)))){
+      var best=double.infinity;
+      for(var y=0;y<rows;y++)for(var x=0;x<cols;x++){
+        final p=center(id(x,y));
+        if(blocked(p))continue;
+        final d=(p-to).distanceSquared;
+        if(d<best){best=d;tx=x;ty=y;}
+      }
+    }
+    final start=id(sx,sy),end=id(tx,ty);
+    final cost=List<double>.filled(cols*rows,double.infinity);
+    final parent=List<int>.filled(cols*rows,-1);
+    final open=<int>[start];
+    final closed=<int>{};
+    cost[start]=0;
+    double heuristic(int k)=>(center(k)-center(end)).distance;
+    while(open.isNotEmpty){
+      var bestIndex=0;
+      for(var i=1;i<open.length;i++){
+        if(cost[open[i]]+heuristic(open[i])<cost[open[bestIndex]]+heuristic(open[bestIndex]))bestIndex=i;
+      }
+      final current=open.removeAt(bestIndex);
+      if(current==end)break;
+      if(!closed.add(current))continue;
+      final x=current%cols,y=current~/cols;
+      for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){
+        if(dx==0&&dy==0)continue;
+        final nx=x+dx,ny=y+dy;
+        if(nx<0||ny<0||nx>=cols||ny>=rows)continue;
+        final next=id(nx,ny);
+        if(closed.contains(next)||blocked(center(next)))continue;
+        if(dx!=0&&dy!=0&&(blocked(center(id(nx,y)))||blocked(center(id(x,ny)))))continue;
+        final tentative=cost[current]+(dx!=0&&dy!=0?1.41421356237:1)*cell;
+        if(tentative>=cost[next])continue;
+        cost[next]=tentative;parent[next]=current;
+        if(!open.contains(next))open.add(next);
+      }
+    }
+    if(start!=end&&parent[end]<0)return [];
+    final reversed=<Offset>[];
+    var cursor=end;
+    while(cursor!=start&&cursor>=0){
+      reversed.add(center(cursor));
+      cursor=parent[cursor];
+    }
+    return reversed.reversed.toList();
   }
   static void paint(Canvas c){
     final p=Paint()..style=PaintingStyle.fill;
@@ -293,7 +351,17 @@ class _RtsState extends State<RtsScreen> {
         if(s.goal!=null){
           final delta=s.goal!-s.p;
           if(delta.distance<4){s.p=s.goal!;s.goal=null;}
-          else{s.p=Terrain.advance(s.p,s.goal!,3.5);}
+          else{
+            if(s.routedGoal!=s.goal){
+              s.waypoints=Terrain.route(s.p,s.goal!);
+              s.routedGoal=s.goal;
+            }
+            while(s.waypoints.isNotEmpty&&(s.waypoints.first-s.p).distance<7){
+              s.waypoints.removeAt(0);
+            }
+            final target=s.waypoints.isNotEmpty?s.waypoints.first:s.goal!;
+            s.p=Terrain.advance(s.p,target,3.5);
+          }
         }else if(!s.marine && s.ore!=null){
           var index=s.ore!;
           if(!s.carrying && oreRemaining[index]<=0){
@@ -444,10 +512,22 @@ class _RtsState extends State<RtsScreen> {
                   d.localPosition.dx/mini.maxWidth*1800,
                   d.localPosition.dy/mini.maxHeight*1200,
                 );
-                camera=Offset(
-                  (world.dx-view.width/2).clamp(0,1400).toDouble(),
-                  (world.dy-view.height/2).clamp(0,900).toDouble(),
-                );
+                if(chosen.isNotEmpty){
+                  var i=0;
+                  for(final unit in chosen){
+                    unit.goal=world+Offset((i++%4)*16.0,0);
+                    unit.attackTarget=null;
+                    unit.mode=CombatMode.move;
+                    unit.ore=null;
+                    unit.routedGoal=null;
+                    unit.waypoints=[];
+                  }
+                }else{
+                  camera=Offset(
+                    (world.dx-view.width/2).clamp(0,(Terrain.world.width-view.width).clamp(0.0,double.infinity)).toDouble(),
+                    (world.dy-view.height/2).clamp(0,(Terrain.world.height-view.height).clamp(0.0,double.infinity)).toDouble(),
+                  );
+                }
               }),
               child:ClipRect(child:CustomPaint(
                 painter:_MiniMap(soldiers,bases,rocks,camera,view,barracks,fog),
