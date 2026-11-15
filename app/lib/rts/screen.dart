@@ -594,24 +594,41 @@ class _Map extends CustomPainter{
       p.color = const Color(0xff39e4ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx+18,o.dy-15)..lineTo(o.dx,o.dy+32)..close(),p);
       p.color = const Color(0xffa0f6ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx-16,o.dy-18)..lineTo(o.dx,o.dy+32)..close(),p);
     }
+    // Pseudo-isometric building silhouettes: visible roofs and south-facing walls.
+    void building(Offset at,double w,double depth,double height,Color roof,Color wall,String name){
+      final footprint=Rect.fromCenter(center:at,width:w,height:depth);
+      final top=footprint.shift(Offset(0,-height));
+      final shadow=Path()..moveTo(footprint.left,footprint.bottom)
+        ..lineTo(footprint.right,footprint.bottom)
+        ..lineTo(top.right,top.bottom)..lineTo(top.left,top.bottom)..close();
+      c.drawPath(shadow,p..color=wall);
+      c.drawRRect(RRect.fromRectAndRadius(top,const Radius.circular(7)),p..color=roof);
+      c.drawLine(top.bottomLeft,top.bottomRight,
+        p..color=const Color(0xffc4c9b7)..style=PaintingStyle.stroke..strokeWidth=3);
+      p.style=PaintingStyle.fill;
+      label(c,name,at+Offset(-w*0.36,-height-6),Colors.white);
+    }
     for(final b in bases){
-      p.color=Colors.blueGrey;c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:b,width:120,height:90),const Radius.circular(8)),p);
-      label(c,'COMMAND',b+const Offset(-42,-8),Colors.white);
+      building(b,120,90,32,const Color(0xff718a99),const Color(0xff344955),'COMMAND');
     }
     for(final b in barracks){
-      p.color=Colors.brown.shade700;
-      c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:b,width:100,height:80),const Radius.circular(6)),p);
-      label(c,'BARRACKS',b+const Offset(-35,-8),Colors.white);
+      building(b,100,80,27,const Color(0xff99735b),const Color(0xff503c36),'BARRACKS');
     }
     fog.paint(c);
     for(final u in [...units,...enemies]){
       if(enemies.contains(u)&&!fog.canSee(u.p))continue;
-      p.color=enemies.contains(u)?Colors.red:(u.marine?Colors.blue:Colors.amber);
-      c.drawCircle(u.p,13,p);
+      // Ground rings are flattened ellipses; units rise above their footprints.
       if(selected.contains(u)){
         p..color=Colors.lightGreenAccent..style=PaintingStyle.stroke..strokeWidth=2;
-        c.drawCircle(u.p,19,p);p.style=PaintingStyle.fill;
+        c.drawOval(Rect.fromCenter(center:u.p+const Offset(0,5),width:40,height:19),p);
+        p.style=PaintingStyle.fill;
       }
+      c.drawOval(Rect.fromCenter(center:u.p+const Offset(3,7),width:25,height:12),
+        p..color=const Color(0x88000000));
+      p.color=enemies.contains(u)?Colors.red:(u.marine?Colors.blue:Colors.amber);
+      c.drawOval(Rect.fromCenter(center:u.p+const Offset(0,-8),width:25,height:32),p);
+      c.drawOval(Rect.fromCenter(center:u.p+const Offset(-3,-15),width:12,height:10),
+        p..color=const Color(0x99ffffff));
       p.color=Colors.black54;
       c.drawRect(Rect.fromLTWH(u.p.dx-15,u.p.dy-23,30,4),p);
       p.color=u.hp>40?Colors.lightGreenAccent:Colors.orangeAccent;
