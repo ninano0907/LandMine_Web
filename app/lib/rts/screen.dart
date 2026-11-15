@@ -133,34 +133,65 @@ class Terrain {
     return from;
   }
   static void paint(Canvas c){
-    final p=Paint();
-    p.color=const Color(0xff415541);
-    c.drawRect(const Rect.fromLTWH(0,0,1800,1200),p);
-    // Worn paths connect the main base to the eastern and southern expansions.
-    p..color=const Color(0xff82795d)..style=PaintingStyle.stroke..strokeWidth=95..strokeCap=StrokeCap.round;
-    final road=Path()..moveTo(270,275)..lineTo(510,470)..lineTo(960,520)..lineTo(1190,760);
-    c.drawPath(road,p);
-    p..color=const Color(0xffa0936e)..strokeWidth=65;
-    c.drawPath(road,p);
-    p.style=PaintingStyle.fill;
-    for(var i=0;i<85;i++){
-      final x=((i*137+41)%1760).toDouble()+20;
-      final y=((i*89+17)%1160).toDouble()+20;
+    final p=Paint()..style=PaintingStyle.fill;
+    c.drawRect(const Rect.fromLTWH(0,0,1800,1200),p..color=const Color(0xff394d3d));
+    // Deterministic ground patches give the battlefield a readable scale.
+    for(var i=0;i<210;i++){
+      final x=((i*173+67)%1780).toDouble()+10;
+      final y=((i*127+39)%1180).toDouble()+10;
       final at=Offset(x,y);
       if(blocked(at))continue;
-      p.color=i.isEven?const Color(0xff566b4b):const Color(0xff314b3c);
-      c.drawCircle(at,5+(i%4)*3.0,p);
+      p.color=i%3==0?const Color(0xff4c6045):i%3==1?const Color(0xff30473a):const Color(0xff526049);
+      c.drawOval(Rect.fromCenter(center:at,width:32+(i%5)*15.0,height:16+(i%4)*10.0),p);
     }
+    // Roads follow the open corridors between impassable ridges.
+    final road=Path()..moveTo(260,270)..cubicTo(390,390,420,500,560,505)
+      ..cubicTo(740,500,900,570,990,610)..cubicTo(1100,670,1130,710,1190,760);
+    p..color=const Color(0xff5a5544)..style=PaintingStyle.stroke
+      ..strokeWidth=108..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round;
+    c.drawPath(road,p);
+    p..color=const Color(0xff887b5b)..strokeWidth=84;
+    c.drawPath(road,p);
+    p..color=const Color(0xff9d8c65)..strokeWidth=54;
+    c.drawPath(road,p);
+    p.style=PaintingStyle.fill;
+    // Decorative detail stays inside the existing collision rectangles.
     for(var i=0;i<obstacles.length;i++){
       final r=obstacles[i];
-      p.color=i==2?const Color(0xff244e61):const Color(0xff252f2c);
-      c.drawRRect(RRect.fromRectAndRadius(r,const Radius.circular(42)),p);
-      p.color=i==2?const Color(0xff39758a):const Color(0xff677064);
-      c.drawRRect(RRect.fromRectAndRadius(r.deflate(17),const Radius.circular(33)),p);
-      if(i!=2){
-        p.color=const Color(0xff92917b);
-        c.drawRRect(RRect.fromRectAndRadius(r.deflate(42),const Radius.circular(22)),p);
+      final water=i==2;
+      c.drawRRect(RRect.fromRectAndRadius(r,const Radius.circular(40)),
+        p..color=water?const Color(0xff183e4c):const Color(0xff202d29));
+      c.drawRRect(RRect.fromRectAndRadius(r.deflate(9),const Radius.circular(33)),
+        p..color=water?const Color(0xff2b6474):const Color(0xff505e50));
+      c.drawRRect(RRect.fromRectAndRadius(r.deflate(23),const Radius.circular(25)),
+        p..color=water?const Color(0xff327d8b):const Color(0xff75806b));
+      if(water){
+        for(var j=0;j<7;j++){
+          final y=r.top+40+j*22.0;
+          c.drawLine(Offset(r.left+44+(j%2)*19,y),
+            Offset(r.right-45,y+6),p..color=const Color(0x884eb4bf)
+              ..style=PaintingStyle.stroke..strokeWidth=3);
+        }
+        p.style=PaintingStyle.fill;
+      }else{
+        for(var j=0;j<4;j++){
+          final inset=37+j*17.0;
+          final top=r.top+inset;
+          if(top>=r.bottom-30)break;
+          c.drawLine(Offset(r.left+34,top),Offset(r.right-34,top+9),
+            p..color=j.isEven?const Color(0xffa0a38a):const Color(0xff424f43)
+              ..style=PaintingStyle.stroke..strokeWidth=5);
+        }
+        p.style=PaintingStyle.fill;
       }
+    }
+    // Small stones and shrubs are visual-only, not additional collision.
+    for(var i=0;i<140;i++){
+      final at=Offset(((i*239+97)%1740).toDouble()+30,
+        ((i*157+53)%1140).toDouble()+30);
+      if(blocked(at))continue;
+      p.color=i.isEven?const Color(0xff263e32):const Color(0xff89907b);
+      c.drawCircle(at,2.0+(i%4)*1.5,p);
     }
   }
 }
