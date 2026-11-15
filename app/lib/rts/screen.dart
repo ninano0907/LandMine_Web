@@ -158,7 +158,7 @@ class Terrain {
     // Decorative detail stays inside the existing collision rectangles.
     for(var i=0;i<obstacles.length;i++){
       final r=obstacles[i];
-      final water=i==2;
+      final water=false;
       c.drawRRect(RRect.fromRectAndRadius(r,const Radius.circular(40)),
         p..color=water?const Color(0xff183e4c):const Color(0xff202d29));
       c.drawRRect(RRect.fromRectAndRadius(r.deflate(9),const Radius.circular(33)),
@@ -577,7 +577,7 @@ class _MiniMap extends CustomPainter {
     final p=Paint();
     for(var i=0;i<Terrain.obstacles.length;i++){
       final r=Terrain.obstacles[i];
-      p.color=i==2?const Color(0xff39758a):const Color(0xff92917b);
+      p.color=const Color(0xff92917b);
       canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(r.left*sx,r.top*sy,r.width*sx,r.height*sy),const Radius.circular(3)),p);
     }
     for(final rock in rocks){
