@@ -235,21 +235,41 @@ class Terrain {
     p..color=const Color(0xff9d8c65)..strokeWidth=54;
     c.drawPath(road,p);
     p.style=PaintingStyle.fill;
-    // Layered rock plateaus replace the former lake.
+    // Elevated mesas with faceted isometric cliff faces.
+    // Their footprints are exactly the rectangles used by pathfinding.
     for(final r in obstacles){
-      c.drawRRect(RRect.fromRectAndRadius(r,const Radius.circular(40)),
-        p..color=const Color(0xff202d29));
-      c.drawRRect(RRect.fromRectAndRadius(r.deflate(9),const Radius.circular(33)),
-        p..color=const Color(0xff505e50));
-      c.drawRRect(RRect.fromRectAndRadius(r.deflate(23),const Radius.circular(25)),
-        p..color=const Color(0xff75806b));
-      for(var j=0;j<4;j++){
-        final inset=37+j*17.0;
-        final top=r.top+inset;
-        if(top>=r.bottom-30)break;
-        c.drawLine(Offset(r.left+34,top),Offset(r.right-34,top+9),
-          p..color=j.isEven?const Color(0xffa0a38a):const Color(0xff424f43)
-            ..style=PaintingStyle.stroke..strokeWidth=5);
+      const lift=24.0;
+      final face=Path()
+        ..moveTo(r.left,r.top)
+        ..lineTo(r.left+24,r.top-lift)
+        ..lineTo(r.right+24,r.top-lift)
+        ..lineTo(r.right,r.top)
+        ..lineTo(r.right,r.bottom)
+        ..lineTo(r.left,r.bottom)
+        ..close();
+      c.drawPath(face,p..color=const Color(0xff26382e));
+      final top=Path()
+        ..moveTo(r.left,r.top)
+        ..lineTo(r.left+24,r.top-lift)
+        ..lineTo(r.right+24,r.top-lift)
+        ..lineTo(r.right,r.top)
+        ..close();
+      c.drawPath(top,p..color=const Color(0xff89937a));
+      final ledge=Path()
+        ..moveTo(r.right,r.top)
+        ..lineTo(r.right+24,r.top-lift)
+        ..lineTo(r.right+24,r.bottom-lift)
+        ..lineTo(r.right,r.bottom)
+        ..close();
+      c.drawPath(ledge,p..color=const Color(0xff35483b));
+      c.drawRect(r.deflate(3),p..color=const Color(0xff63775b));
+      // Slanted strata make the elevation readable at mobile scale.
+      p..style=PaintingStyle.stroke..strokeWidth=3;
+      for(var j=0;j<3;j++){
+        final y=r.top+30+j*37.0;
+        if(y>=r.bottom-12)break;
+        c.drawLine(Offset(r.left+8,y),Offset(r.right-8,y-12),
+          p..color=j.isEven?const Color(0xff8b9478):const Color(0xff425748));
       }
       p.style=PaintingStyle.fill;
     }
