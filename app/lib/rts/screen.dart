@@ -213,35 +213,23 @@ class Terrain {
     p..color=const Color(0xff9d8c65)..strokeWidth=54;
     c.drawPath(road,p);
     p.style=PaintingStyle.fill;
-    // Decorative detail stays inside the existing collision rectangles.
-    for(var i=0;i<obstacles.length;i++){
-      final r=obstacles[i];
-      final water=false;
+    // Layered rock plateaus replace the former lake.
+    for(final r in obstacles){
       c.drawRRect(RRect.fromRectAndRadius(r,const Radius.circular(40)),
-        p..color=water?const Color(0xff183e4c):const Color(0xff202d29));
+        p..color=const Color(0xff202d29));
       c.drawRRect(RRect.fromRectAndRadius(r.deflate(9),const Radius.circular(33)),
-        p..color=water?const Color(0xff2b6474):const Color(0xff505e50));
+        p..color=const Color(0xff505e50));
       c.drawRRect(RRect.fromRectAndRadius(r.deflate(23),const Radius.circular(25)),
-        p..color=water?const Color(0xff327d8b):const Color(0xff75806b));
-      if(water){
-        for(var j=0;j<7;j++){
-          final y=r.top+40+j*22.0;
-          c.drawLine(Offset(r.left+44+(j%2)*19,y),
-            Offset(r.right-45,y+6),p..color=const Color(0x884eb4bf)
-              ..style=PaintingStyle.stroke..strokeWidth=3);
-        }
-        p.style=PaintingStyle.fill;
-      }else{
-        for(var j=0;j<4;j++){
-          final inset=37+j*17.0;
-          final top=r.top+inset;
-          if(top>=r.bottom-30)break;
-          c.drawLine(Offset(r.left+34,top),Offset(r.right-34,top+9),
-            p..color=j.isEven?const Color(0xffa0a38a):const Color(0xff424f43)
-              ..style=PaintingStyle.stroke..strokeWidth=5);
-        }
-        p.style=PaintingStyle.fill;
+        p..color=const Color(0xff75806b));
+      for(var j=0;j<4;j++){
+        final inset=37+j*17.0;
+        final top=r.top+inset;
+        if(top>=r.bottom-30)break;
+        c.drawLine(Offset(r.left+34,top),Offset(r.right-34,top+9),
+          p..color=j.isEven?const Color(0xffa0a38a):const Color(0xff424f43)
+            ..style=PaintingStyle.stroke..strokeWidth=5);
       }
+      p.style=PaintingStyle.fill;
     }
     // Small stones and shrubs are visual-only, not additional collision.
     for(var i=0;i<140;i++){
