@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 enum UnitSize { small, medium, large }
 
 enum AttackType { antiLarge, antiSmall, balanced }
+enum CombatMode { attack, hold, move }
 
 double damageMultiplier(AttackType attack, UnitSize target) {
   if (attack == AttackType.balanced) return 1.0;
@@ -25,6 +26,9 @@ class Soldier {
   AttackType attackType = AttackType.antiLarge;
   int cooldown = 0;
   Soldier? attackTarget;
+  CombatMode mode = CombatMode.attack;
+  Offset? home;
+  bool assisting = false;
 }
 class RtsScreen extends StatefulWidget {
   const RtsScreen({super.key});
@@ -66,30 +70,52 @@ class _RtsState extends State<RtsScreen> {
         queue=null;trainingAt=null;ticks=0;
       }
       for(final unit in [...soldiers,...enemies]) {
-        if(unit.cooldown>0) unit.cooldown--;
-        if(!unit.marine) continue;
-        final targets=enemies.contains(unit)?soldiers:soldiers.contains(unit)?enemies:<Soldier>[];
-        Soldier? nearest;
-        var distance=double.infinity;
-        final ordered=unit.attackTarget;
-        if(ordered!=null && targets.contains(ordered) && ordered.hp>0){
-          nearest=ordered;
-          distance=(ordered.p-unit.p).distance;
-        }
-        if(nearest==null){
-          for(final target in targets){
-            if(target.hp<=0)continue;
-            final d=(target.p-unit.p).distance;
-            if(d<distance && d<=360){distance=d;nearest=target;}
+        if(unit.cooldown>0)unit.cooldown--;
+        if(!unit.marine || unit.hp<=0)continue;
+        final friendly=enemies.contains(unit)?enemies:soldiers;
+        final hostile=enemies.contains(unit)?soldiers:enemies;
+        final assigned=unit.attackTarget;
+        Soldier? target;
+        if(assigned!=null && hostile.contains(assigned) && assigned.hp>0) {
+          target=assigned;
+        } else {
+          unit.attackTarget=null;
+          var nearest=double.infinity;
+          for(final candidate in hostile) {
+            if(candidate.hp<=0)continue;
+            final distance=(candidate.p-unit.p).distance;
+            final detect=unit.mode==CombatMode.hold?145.0:360.0;
+            if(distance<=detect && distance<nearest) {
+              nearest=distance;target=candidate;
+            }
           }
         }
-        if(nearest!=null && distance>145 && distance<=360 && unit.goal==null){
-          final delta=nearest.p-unit.p;
-          if(delta.distance>0)unit.p+=delta/delta.distance*2.5;
+        if(target==null) {
+          if(unit.assisting && unit.home!=null) {
+            unit.goal=unit.home;
+            unit.assisting=false;
+          }
+          continue;
         }
-        if(nearest!=null && distance<=145 && unit.cooldown==0){
-          nearest.hp-=(10 * damageMultiplier(unit.attackType, nearest.size)).round();
-          unit.cooldown=12;
+        final distance=(target.p-unit.p).distance;
+        if(distance<=145) {
+          if(unit.cooldown==0) {
+            target.hp-=(10*damageMultiplier(unit.attackType,target.size)).round();
+            unit.cooldown=12;
+            if(target.hp>0) {
+              for(final ally in friendly) {
+                if(identical(ally,target)||!ally.marine||ally.hp<=0||ally.mode==CombatMode.hold||ally.attackTarget!=null)continue;
+                if((ally.p-unit.p).distance<=300 && (ally.p-target.p).distance<=300) {
+                  ally.home ??= ally.p;
+                  ally.assisting=true;
+                  ally.attackTarget=target;
+                }
+              }
+            }
+          }
+        } else if(unit.mode==CombatMode.attack && distance<=360 && unit.goal==null) {
+          final delta=target.p-unit.p;
+          if(delta.distance>0)unit.p+=delta/delta.distance*2.5;
         }
       }
       soldiers.removeWhere((u)=>u.hp<=0);
@@ -144,7 +170,7 @@ class _RtsState extends State<RtsScreen> {
     if(hits.isNotEmpty){setState((){selectedBase=null;selectedBarracks=null;chosen..clear()..add(hits.first);});return;}
     final enemyHits=enemies.where((e)=>(e.p-p).distance<22);
     if(enemyHits.isNotEmpty && chosen.any((u)=>u.marine)){
-      setState((){for(final u in chosen.where((u)=>u.marine)){u.attackTarget=enemyHits.first;u.goal=null;}});
+      setState((){for(final u in chosen.where((u)=>u.marine)){u.attackTarget=enemyHits.first;u.mode=CombatMode.attack;u.goal=null;}});
       return;
     }
     for(final base in bases){
@@ -163,6 +189,9 @@ class _RtsState extends State<RtsScreen> {
       var i=0;
       for(final s in chosen){
         s.attackTarget=null;
+        s.mode=CombatMode.move;
+        s.assisting=false;
+        s.home=null;
         s.ore=ore>=0&&!s.marine?ore:null;
         s.carrying=false;
         s.goal=ore>=0&&!s.marine?rocks[ore]+const Offset(-20,0):p+Offset((i++%4)*18.0,0);
@@ -258,6 +287,10 @@ class _RtsState extends State<RtsScreen> {
                   if(chosen.any((u)=>!u.marine)) ...[
                     _action('본부 400',buildBase),
                     _action('병영 200',buildBarracks),
+                  ],
+                  if(chosen.any((u)=>u.marine)) ...[
+                    _action('홀드',()=>setState((){for(final u in chosen.where((u)=>u.marine)){u.mode=CombatMode.hold;u.goal=null;u.attackTarget=null;u.assisting=false;u.home=null;}})),
+                    _action('어택',()=>setState((){for(final u in chosen.where((u)=>u.marine)){u.mode=CombatMode.attack;u.goal=null;u.attackTarget=null;u.mode=CombatMode.hold;u.assisting=false;u.home=null;}})),
                   ],
                   if(chosen.isNotEmpty) _action('정지',()=>setState((){
                     for(final u in chosen){u.goal=null;u.ore=null;u.carrying=false;u.attackTarget=null;}
