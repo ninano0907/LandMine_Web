@@ -594,25 +594,16 @@ class _Map extends CustomPainter{
       p.color = const Color(0xff39e4ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx+18,o.dy-15)..lineTo(o.dx,o.dy+32)..close(),p);
       p.color = const Color(0xffa0f6ff);c.drawPath(Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx-16,o.dy-18)..lineTo(o.dx,o.dy+32)..close(),p);
     }
-    // Pseudo-isometric building silhouettes: visible roofs and south-facing walls.
-    void building(Offset at,double w,double depth,double height,Color roof,Color wall,String name){
-      final footprint=Rect.fromCenter(center:at,width:w,height:depth);
-      final top=footprint.shift(Offset(0,-height));
-      final shadow=Path()..moveTo(footprint.left,footprint.bottom)
-        ..lineTo(footprint.right,footprint.bottom)
-        ..lineTo(top.right,top.bottom)..lineTo(top.left,top.bottom)..close();
-      c.drawPath(shadow,p..color=wall);
-      c.drawRRect(RRect.fromRectAndRadius(top,const Radius.circular(7)),p..color=roof);
-      c.drawLine(top.bottomLeft,top.bottomRight,
-        p..color=const Color(0xffc4c9b7)..style=PaintingStyle.stroke..strokeWidth=3);
-      p.style=PaintingStyle.fill;
-      label(c,name,at+Offset(-w*0.36,-height-6),Colors.white);
-    }
+    // Temporary building footprints retain the final sprite dimensions.
     for(final b in bases){
-      building(b,120,90,32,const Color(0xff718a99),const Color(0xff344955),'COMMAND');
+      p.color=const Color(0xff718a99);
+      c.drawRect(Rect.fromCenter(center:b,width:120,height:90),p);
+      label(c,'COMMAND',b+const Offset(-42,-8),Colors.white);
     }
     for(final b in barracks){
-      building(b,100,80,27,const Color(0xff99735b),const Color(0xff503c36),'BARRACKS');
+      p.color=const Color(0xff99735b);
+      c.drawRect(Rect.fromCenter(center:b,width:100,height:80),p);
+      label(c,'BARRACKS',b+const Offset(-35,-8),Colors.white);
     }
     fog.paint(c);
     for(final u in [...units,...enemies]){
@@ -627,8 +618,6 @@ class _Map extends CustomPainter{
         p..color=const Color(0x88000000));
       p.color=enemies.contains(u)?Colors.red:(u.marine?Colors.blue:Colors.amber);
       c.drawOval(Rect.fromCenter(center:u.p+const Offset(0,-8),width:25,height:32),p);
-      c.drawOval(Rect.fromCenter(center:u.p+const Offset(-3,-15),width:12,height:10),
-        p..color=const Color(0x99ffffff));
       p.color=Colors.black54;
       c.drawRect(Rect.fromLTWH(u.p.dx-15,u.p.dy-23,30,4),p);
       p.color=u.hp>40?Colors.lightGreenAccent:Colors.orangeAccent;
