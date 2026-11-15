@@ -8,6 +8,8 @@ class Soldier {
   bool marine;
   int? ore;
   bool carrying = false;
+  int hp = 100;
+  int cooldown = 0;
 }
 class RtsScreen extends StatefulWidget {
   const RtsScreen({super.key});
@@ -19,6 +21,11 @@ class _RtsState extends State<RtsScreen> {
   final bases=<Offset>[const Offset(260,260)];
   final rocks=<Offset>[const Offset(425,165),const Offset(485,200),const Offset(510,265),const Offset(495,335),const Offset(435,395),const Offset(380,420),const Offset(1150,750),const Offset(1250,800)];
   final chosen=<Soldier>{};
+  final enemies=<Soldier>[
+    Soldier(const Offset(850,420),true),
+    Soldier(const Offset(920,470),true),
+    Soldier(const Offset(990,420),true),
+  ];
   Offset? selectedBase;
   late final Timer timer;
   Offset camera=Offset.zero;
@@ -39,6 +46,24 @@ class _RtsState extends State<RtsScreen> {
         soldiers.add(Soldier(bases.first+const Offset(80,60),queue!));
         queue=null;ticks=0;
       }
+      for(final unit in [...soldiers,...enemies]) {
+        if(unit.cooldown>0) unit.cooldown--;
+        if(!unit.marine) continue;
+        final targets=enemies.contains(unit)?soldiers:soldiers.contains(unit)?enemies:<Soldier>[];
+        Soldier? nearest;
+        var distance=double.infinity;
+        for(final target in targets){
+          final d=(target.p-unit.p).distance;
+          if(d<distance){distance=d;nearest=target;}
+        }
+        if(nearest!=null && distance<=145 && unit.cooldown==0){
+          nearest.hp-=10;
+          unit.cooldown=12;
+        }
+      }
+      soldiers.removeWhere((u)=>u.hp<=0);
+      enemies.removeWhere((u)=>u.hp<=0);
+      chosen.removeWhere((u)=>!soldiers.contains(u));
       for(final s in soldiers){
         if(s.goal!=null){
           final delta=s.goal!-s.p;
@@ -129,7 +154,7 @@ class _RtsState extends State<RtsScreen> {
             }
             begin=null;end=null;
           }),
-          child:CustomPaint(size:Size.infinite,painter:_Map(soldiers,bases,rocks,chosen,camera,begin,end)))),
+          child:CustomPaint(size:Size.infinite,painter:_Map(soldiers,bases,rocks,chosen,camera,begin,end,enemies)))),
         Container(
           height:126,
           padding:const EdgeInsets.all(5),
@@ -159,12 +184,12 @@ class _RtsState extends State<RtsScreen> {
               alignment:Alignment.center,
               decoration:BoxDecoration(color:const Color(0xff243640),border:Border.all(color:Colors.blueGrey)),
               child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                Text(selectedBase!=null?'커맨드 센터':chosen.isEmpty?'선택 없음':chosen.length==1?(chosen.first.marine?'마린':'SCV'):'유닛 ${chosen.length}기',
+                Text(selectedBase!=null?'커맨드 센터':chosen.isEmpty?'선택 없음':chosen.length==1?(chosen.first.marine?'보병':'광부'):'유닛 ${chosen.length}기',
                   textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.bold)),
                 const SizedBox(height:5),
-                Text(selectedBase!=null?'기지 · 생산':chosen.isEmpty?'유닛이나 기지를 선택하세요':chosen.any((u)=>!u.marine)?'채굴 / 이동 / 확장':'이동 / 방어',
+                Text(selectedBase!=null?'기지 · 생산':chosen.isEmpty?'유닛이나 기지를 선택하세요':chosen.any((u)=>!u.marine)?'채굴 / 이동 / 확장':'이동 / 자동 공격',
                   textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70,fontSize:11)),
-                if(queue!=null)Text('생산 중: ${queue!?'마린':'SCV'}',style:const TextStyle(color:Colors.cyanAccent,fontSize:11)),
+                if(queue!=null)Text('생산 중: ${queue!?'보병':'광부'}',style:const TextStyle(color:Colors.cyanAccent,fontSize:11)),
               ]),
             )),
             const SizedBox(width:6),
@@ -175,8 +200,8 @@ class _RtsState extends State<RtsScreen> {
                 const Text('명령',style:TextStyle(color:Colors.white70,fontSize:11)),
                 Expanded(child:SingleChildScrollView(child:Wrap(spacing:4,runSpacing:4,children:[
                   if(selectedBase!=null||chosen.isEmpty) ...[
-                    _action('SCV 50',()=>train(false)),
-                    _action('마린 75',()=>train(true)),
+                    _action('광부 50',()=>train(false)),
+                    _action('보병 75',()=>train(true)),
                   ],
                   if(chosen.any((u)=>!u.marine)) _action('기지 400',buildBase),
                   if(chosen.isNotEmpty) _action('정지',()=>setState((){
@@ -197,7 +222,8 @@ class _RtsState extends State<RtsScreen> {
   );
 }
 class _Map extends CustomPainter{
-  _Map(this.units,this.bases,this.rocks,this.selected,this.camera,this.start,this.end);
+  _Map(this.units,this.bases,this.rocks,this.selected,this.camera,this.start,this.end,this.enemies);
+  final List<Soldier> enemies;
   final List<Soldier> units;
   final List<Offset> bases,rocks;
   final Set<Soldier> selected;
@@ -220,14 +246,18 @@ class _Map extends CustomPainter{
       p.color=Colors.blueGrey;c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:b,width:120,height:90),const Radius.circular(8)),p);
       label(c,'COMMAND',b+const Offset(-42,-8),Colors.white);
     }
-    for(final u in units){
-      p.color=u.marine?Colors.blue:Colors.amber;
+    for(final u in [...units,...enemies]){
+      p.color=enemies.contains(u)?Colors.red:(u.marine?Colors.blue:Colors.amber);
       c.drawCircle(u.p,13,p);
       if(selected.contains(u)){
         p..color=Colors.lightGreenAccent..style=PaintingStyle.stroke..strokeWidth=2;
         c.drawCircle(u.p,19,p);p.style=PaintingStyle.fill;
       }
-      label(c,u.marine?'M':'S',u.p+const Offset(-5,-8),Colors.black);
+      p.color=Colors.black54;
+      c.drawRect(Rect.fromLTWH(u.p.dx-15,u.p.dy-23,30,4),p);
+      p.color=u.hp>40?Colors.lightGreenAccent:Colors.orangeAccent;
+      c.drawRect(Rect.fromLTWH(u.p.dx-15,u.p.dy-23,30*(u.hp.clamp(0,100)/100),4),p);
+      label(c,u.marine?'B':'G',u.p+const Offset(-5,-8),Colors.black);
     }
     c.restore();
     if(start!=null&&end!=null){
