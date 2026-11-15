@@ -45,6 +45,7 @@ class Soldier extends CombatUnit {
   bool marine;
   int? ore;
   bool carrying = false;
+  int miningTicks = 0;
   int hp = 100;
   UnitSize size = UnitSize.small;
   AttackType attackType = AttackType.antiLarge;
@@ -116,7 +117,8 @@ class _RtsState extends State<RtsScreen> {
   final bases=<Offset>[const Offset(260,260)];
   final barracks=<Offset>[];
   Offset? selectedBarracks;
-  final rocks=<Offset>[const Offset(425,165),const Offset(485,200),const Offset(510,265),const Offset(495,335),const Offset(435,395),const Offset(380,420),const Offset(1150,750),const Offset(1250,800)];
+  final rocks=<Offset>[const Offset(425,165),const Offset(485,200),const Offset(510,265),const Offset(495,335),const Offset(435,395),const Offset(380,420),const Offset(320,440),const Offset(245,445),const Offset(160,410),const Offset(110,345),const Offset(105,265),const Offset(140,185),const Offset(1150,750),const Offset(1250,800)];
+  late final List<int> oreRemaining=List<int>.filled(rocks.length,1500);
   final chosen=<Soldier>{};
   final enemies=<Soldier>[
     Soldier(const Offset(850,420),true),
@@ -162,18 +164,45 @@ class _RtsState extends State<RtsScreen> {
           if(delta.distance<4){s.p=s.goal!;s.goal=null;}
           else{s.p+=delta/delta.distance*3.5;}
         }else if(!s.marine && s.ore!=null){
-          final rock=rocks[s.ore!];
-          if(!s.carrying){
-            if((s.p-rock).distance>28)s.goal=rock+const Offset(-20,0);
-            else s.carrying=true;
+          var index=s.ore!;
+          if(!s.carrying && oreRemaining[index]<=0){
+            index=nearestOre(s.p);
+            s.ore=index<0?null:index;
+            s.miningTicks=0;
+            if(index<0)continue;
+          }
+          if(s.carrying){
+            final base=bases.reduce((a,b)=>(a-s.p).distance<(b-s.p).distance?a:b);
+            if((s.p-base).distance>65){
+              s.goal=base+const Offset(50,30);
+            }else{
+              cash+=5;
+              s.carrying=false;
+              s.miningTicks=0;
+            }
           }else{
-            final b=bases.reduce((a,b)=>(a-s.p).distance<(b-s.p).distance?a:b);
-            if((s.p-b).distance>65)s.goal=b+const Offset(50,30);
-            else{cash+=5;s.carrying=false;}
+            final rock=rocks[index];
+            if((s.p-rock).distance>28){
+              s.goal=rock+const Offset(-20,0);
+            }else if(++s.miningTicks>=24){
+              oreRemaining[index]=(oreRemaining[index]-5).clamp(0,1500);
+              s.carrying=true;
+              s.miningTicks=0;
+            }
           }
         }
       }
     });
+  }
+  int nearestOre(Offset from){
+    var best=-1;
+    var distance=double.infinity;
+    for(var i=0;i<rocks.length;i++){
+      if(oreRemaining[i]<=0)continue;
+      final d=(rocks[i]-from).distance;
+      if(d<distance){distance=d;best=i;}
+    }
+    return best;
   }
   void train(bool marine){
     final cost=marine?75:50;
@@ -216,7 +245,7 @@ class _RtsState extends State<RtsScreen> {
       }
     }
     var ore=-1;
-    for(var i=0;i<rocks.length;i++){if((rocks[i]-p).distance<38)ore=i;}
+    for(var i=0;i<rocks.length;i++){if(oreRemaining[i]>0 && (rocks[i]-p).distance<38)ore=i;}
     setState((){
       var i=0;
       for(final s in chosen){
@@ -226,6 +255,7 @@ class _RtsState extends State<RtsScreen> {
         s.home=null;
         s.ore=ore>=0&&!s.marine?ore:null;
         s.carrying=false;
+        s.miningTicks=0;
         s.goal=ore>=0&&!s.marine?rocks[ore]+const Offset(-20,0):p+Offset((i++%4)*18.0,0);
       }
     });
@@ -325,7 +355,7 @@ class _RtsState extends State<RtsScreen> {
                     _action('어택',()=>setState((){for(final u in chosen.where((u)=>u.marine)){u.mode=CombatMode.attack;u.goal=null;u.attackTarget=null;u.mode=CombatMode.hold;u.assisting=false;u.home=null;}})),
                   ],
                   if(chosen.isNotEmpty) _action('정지',()=>setState((){
-                    for(final u in chosen){u.goal=null;u.ore=null;u.carrying=false;u.attackTarget=null;}
+                    for(final u in chosen){u.goal=null;u.ore=null;u.carrying=false;u.miningTicks=0;u.attackTarget=null;}
                   })),
                   if(selectedBase==null&&selectedBarracks==null&&chosen.isEmpty)const Text('유닛 또는 기지 선택',style:TextStyle(color:Colors.white54,fontSize:11)),
                   _action('◀',()=>moveCamera(-150,0)),
