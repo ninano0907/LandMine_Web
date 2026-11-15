@@ -199,14 +199,30 @@ class Terrain {
   static void paint(Canvas c){
     final p=Paint()..style=PaintingStyle.fill;
     c.drawRect(const Rect.fromLTWH(0,0,1800,1200),p..color=const Color(0xff394d3d));
-    // Deterministic ground patches give the battlefield a readable scale.
-    for(var i=0;i<210;i++){
-      final x=((i*173+67)%1780).toDouble()+10;
-      final y=((i*127+39)%1180).toDouble()+10;
-      final at=Offset(x,y);
-      if(blocked(at))continue;
-      p.color=i%3==0?const Color(0xff4c6045):i%3==1?const Color(0xff30473a):const Color(0xff526049);
-      c.drawOval(Rect.fromCenter(center:at,width:32+(i%5)*15.0,height:16+(i%4)*10.0),p);
+    // Staggered diamond tiles: 80 x 40 isometric-looking terrain cells.
+    // Rendering is independent of world coordinates, so unit movement,
+    // collision, selection and the minimap keep their existing positions.
+    for(var row=0;row<62;row++){
+      final cy=row*20.0;
+      for(var col=-1;col<24;col++){
+        final cx=col*80.0+(row.isOdd?40.0:0.0);
+        final tile=Path()
+          ..moveTo(cx,cy-20)
+          ..lineTo(cx+40,cy)
+          ..lineTo(cx,cy+20)
+          ..lineTo(cx-40,cy)
+          ..close();
+        final variation=(row*17+col*29).abs()%7;
+        p.color=variation<2?const Color(0xff455b43)
+            :variation<4?const Color(0xff3b503e)
+            :variation==4?const Color(0xff536449)
+            :const Color(0xff354a3a);
+        c.drawPath(tile,p);
+        p..color=const Color(0x24304031)
+          ..style=PaintingStyle.stroke..strokeWidth=1;
+        c.drawPath(tile,p);
+        p.style=PaintingStyle.fill;
+      }
     }
     // Roads follow the open corridors between impassable ridges.
     final road=Path()..moveTo(260,270)..cubicTo(390,390,420,500,560,505)
@@ -717,9 +733,6 @@ class _Map extends CustomPainter{
     c.save();c.translate(-camera.dx,-camera.dy);
     Terrain.paint(c);
     final p=Paint();
-    p.color = const Color(0x225ea487);
-    for(var x=0.0;x<1800;x+=80)c.drawLine(Offset(x,0),Offset(x,1200),p);
-    for(var y=0.0;y<1200;y+=80)c.drawLine(Offset(0,y),Offset(1800,y),p);
     for(final o in rocks){
       final crystal=Path()..moveTo(o.dx,o.dy-34)..lineTo(o.dx+18,o.dy-15)..lineTo(o.dx+27,o.dy+15)..lineTo(o.dx,o.dy+32)..lineTo(o.dx-25,o.dy+12)..lineTo(o.dx-16,o.dy-18)..close();
       p.color = const Color(0xff0a6177);c.drawPath(crystal,p);
