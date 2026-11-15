@@ -312,6 +312,7 @@ class _RtsState extends State<RtsScreen> {
   final botWorkers=<Soldier,List<Soldier>>{};
   final botArmies=<Soldier,List<Soldier>>{};
   final botMiningTicks=<Soldier,int>{};
+  final botOwner=<Soldier,Soldier>{};
   int botDecisionTicks=0;
   final botHomes=<Soldier,Offset>{};
   Offset? selectedBase;
@@ -329,6 +330,7 @@ class _RtsState extends State<RtsScreen> {
       botHomes[bot]=MissionMap.starts[i+1];
       botWorkers[bot]=[for(var j=0;j<4;j++) Soldier(MissionMap.starts[i+1]+Offset((i==0?-1:1)*(50+j*18.0),65),false)];
       botArmies[bot]=[bot];
+      botOwner[bot]=bot;
       botMiningTicks[bot]=0;
       botReserves[bot]=180+i*75;
       botRiskTolerance[bot]=0.25+i*0.25;
@@ -373,12 +375,27 @@ class _RtsState extends State<RtsScreen> {
       }
       for(final bot in botHomes.keys) {
         final strategy=botStrategies[bot]??BotStrategy.preserve;
-        bot.mode=strategy==BotStrategy.raid?CombatMode.attack:CombatMode.hold;
-        if(strategy==BotStrategy.preserve) {
-          bot.goal=null;
-          final home=botHomes[botReserves.keys.toList().indexOf(bot).clamp(0,2)];
-          if((bot.p-home).distance>125) {
-            bot.p=Terrain.advance(bot.p,home,bot.speed);
+        final home=botHomes[bot]!;
+        for(final fighter in botArmies[bot]??<Soldier>[]){
+          if(fighter.hp<=0)continue;
+          fighter.mode=strategy==BotStrategy.raid?CombatMode.attack:CombatMode.hold;
+          if(strategy==BotStrategy.preserve){
+            fighter.goal=null;
+            if((fighter.p-home).distance>125){
+              fighter.p=Terrain.advance(fighter.p,home,fighter.speed);
+            }
+          }else{
+            final rivalHomes=<Offset>[
+              MissionMap.starts.first,
+              for(final other in botHomes.keys)
+                if(other!=bot) botHomes[other]!,
+            ];
+            rivalHomes.sort((a,b)=>
+              (a-fighter.p).distanceSquared.compareTo((b-fighter.p).distanceSquared));
+            final target=rivalHomes.first;
+            if((fighter.p-target).distance>170){
+              fighter.p=Terrain.advance(fighter.p,target,fighter.speed);
+            }
           }
         }
       }
@@ -420,18 +437,31 @@ class _RtsState extends State<RtsScreen> {
             final unit=Soldier(home+const Offset(75,65),true);
             army.add(unit);
             enemies.add(unit);
+            botOwner[unit]=bot;
             botReserves[bot]=bank-75;
           }
         }
       }
       for(final unit in [...soldiers,...enemies]) {
-        if(unit.cooldown>0)unit.cooldown--;
         if(!unit.marine || unit.hp<=0)continue;
-        CombatAi.tick(unit, friendly: enemies.contains(unit)?enemies:soldiers, hostile: enemies.contains(unit)?soldiers:enemies);
+        if(soldiers.contains(unit)){
+          CombatAi.tick(unit, friendly:soldiers, hostile:enemies);
+        }else{
+          final owner=botOwner[unit];
+          if(owner==null)continue;
+          final allies=botArmies[owner]??<Soldier>[];
+          final rivals=<Soldier>[
+            ...soldiers,
+            for(final other in enemies)
+              if(botOwner[other]!=owner) other,
+          ];
+          CombatAi.tick(unit, friendly:allies, hostile:rivals);
+        }
       }
       soldiers.removeWhere((u)=>u.hp<=0);
       enemies.removeWhere((u)=>u.hp<=0);
       for(final army in botArmies.values){army.removeWhere((u)=>u.hp<=0);}
+      botOwner.removeWhere((unit,_)=>unit.hp<=0);
       chosen.removeWhere((u)=>!soldiers.contains(u));
       fog.update(soldiers,bases,barracks);
       for(final u in soldiers){
