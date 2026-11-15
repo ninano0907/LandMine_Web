@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'mission_map.dart';
 
 enum UnitSize { small, medium, large }
 
@@ -295,7 +296,7 @@ class _RtsState extends State<RtsScreen> {
   final bases=<Offset>[const Offset(260,260)];
   final barracks=<Offset>[];
   Offset? selectedBarracks;
-  final rocks=<Offset>[const Offset(425,165),const Offset(485,200),const Offset(510,265),const Offset(495,335),const Offset(435,395),const Offset(380,420),const Offset(320,440),const Offset(245,445),const Offset(160,410),const Offset(110,345),const Offset(105,265),const Offset(140,185),const Offset(1150,750),const Offset(1250,800)];
+  final rocks=MissionMap.minerals(1);
   late final List<int> oreRemaining=List<int>.filled(rocks.length,1500);
   final chosen=<Soldier>{};
   final enemies=<Soldier>[
