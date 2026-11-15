@@ -1,0 +1,23 @@
+name: RTS regression tests
+on:
+  push:
+    branches:
+      - feature/rts-starcraft-style
+  workflow_dispatch:
+
+jobs:
+  rts-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.38.9'
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze lib/rts lib/main.dart
+      - run: flutter test test/rts_map_test.dart
