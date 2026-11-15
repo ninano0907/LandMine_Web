@@ -309,6 +309,9 @@ class _RtsState extends State<RtsScreen> {
   final botStrategies=<Soldier,BotStrategy>{};
   final botReserves=<Soldier,int>{};
   final botRiskTolerance=<Soldier,double>{};
+  final botWorkers=<Soldier,List<Soldier>>{};
+  final botArmies=<Soldier,List<Soldier>>{};
+  final botMiningTicks=<Soldier,int>{};
   int botDecisionTicks=0;
   final botHomes=<Soldier,Offset>{};
   Offset? selectedBase;
@@ -324,6 +327,9 @@ class _RtsState extends State<RtsScreen> {
     for(var i=0;i<enemies.length;i++) {
       final bot=enemies[i];
       botHomes[bot]=MissionMap.starts[i+1];
+      botWorkers[bot]=[for(var j=0;j<4;j++) Soldier(MissionMap.starts[i+1]+Offset((i==0?-1:1)*(50+j*18.0),65),false)];
+      botArmies[bot]=[bot];
+      botMiningTicks[bot]=0;
       botReserves[bot]=180+i*75;
       botRiskTolerance[bot]=0.25+i*0.25;
       botStrategies[bot]=BotStrategy.preserve;
@@ -365,7 +371,7 @@ class _RtsState extends State<RtsScreen> {
                       :BotStrategy.preserve;
         }
       }
-      for(final bot in enemies) {
+      for(final bot in botHomes.keys) {
         final strategy=botStrategies[bot]??BotStrategy.preserve;
         bot.mode=strategy==BotStrategy.raid?CombatMode.attack:CombatMode.hold;
         if(strategy==BotStrategy.preserve) {
@@ -376,6 +382,48 @@ class _RtsState extends State<RtsScreen> {
           }
         }
       }
+      // Bot workers gather from their nearest mineral field and deposit at home.
+      for(final bot in botHomes.keys){
+        final home=botHomes[bot]!;
+        final workers=botWorkers[bot]!;
+        final army=botArmies[bot]!;
+        for(final worker in workers){
+          if(worker.hp<=0)continue;
+          if(worker.carrying){
+            if((worker.p-home).distance>60){
+              worker.p=Terrain.advance(worker.p,home,3.5);
+            }else{
+              botReserves[bot]=(botReserves[bot]??0)+5;
+              worker.carrying=false;
+            }
+          }else{
+            final ore=nearestOre(worker.p);
+            if(ore<0)continue;
+            final target=rocks[ore];
+            if((worker.p-target).distance>27){
+              worker.p=Terrain.advance(worker.p,target,3.5);
+            }else if(++worker.miningTicks>=24){
+              oreRemaining[ore]=(oreRemaining[ore]-5).clamp(0,1500);
+              worker.carrying=true;
+              worker.miningTicks=0;
+            }
+          }
+        }
+        // Every bot independently reinvests surplus into workers or soldiers.
+        if(botDecisionTicks==0){
+          final bank=botReserves[bot]??0;
+          final preserve=botStrategies[bot]==BotStrategy.preserve;
+          if(workers.length<7 && bank>=100){
+            workers.add(Soldier(home+const Offset(40,65),false));
+            botReserves[bot]=bank-50;
+          }else if(army.length<12 && bank>=(preserve?400:150)){
+            final unit=Soldier(home+const Offset(75,65),true);
+            army.add(unit);
+            enemies.add(unit);
+            botReserves[bot]=bank-75;
+          }
+        }
+      }
       for(final unit in [...soldiers,...enemies]) {
         if(unit.cooldown>0)unit.cooldown--;
         if(!unit.marine || unit.hp<=0)continue;
@@ -383,6 +431,7 @@ class _RtsState extends State<RtsScreen> {
       }
       soldiers.removeWhere((u)=>u.hp<=0);
       enemies.removeWhere((u)=>u.hp<=0);
+      for(final army in botArmies.values){army.removeWhere((u)=>u.hp<=0);}
       chosen.removeWhere((u)=>!soldiers.contains(u));
       fog.update(soldiers,bases,barracks);
       for(final u in soldiers){
