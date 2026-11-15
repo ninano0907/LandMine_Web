@@ -33,6 +33,8 @@ class RtsScreen extends StatefulWidget {
 class _RtsState extends State<RtsScreen> {
   final soldiers=<Soldier>[];
   final bases=<Offset>[const Offset(260,260)];
+  final barracks=<Offset>[];
+  Offset? selectedBarracks;
   final rocks=<Offset>[const Offset(425,165),const Offset(485,200),const Offset(510,265),const Offset(495,335),const Offset(435,395),const Offset(380,420),const Offset(1150,750),const Offset(1250,800)];
   final chosen=<Soldier>{};
   final enemies=<Soldier>[
@@ -47,6 +49,7 @@ class _RtsState extends State<RtsScreen> {
   Size view=Size.zero;
   int cash=250;
   bool? queue;
+  Offset? trainingAt;
   int ticks=0;
   _RtsState() {
     for(var i=0;i<4;i++) soldiers.add(Soldier(Offset(200+i*30.0,340),false));
@@ -57,8 +60,9 @@ class _RtsState extends State<RtsScreen> {
     if(!mounted)return;
     setState((){
       if(queue!=null && ++ticks >= (queue!?100:60)){
-        soldiers.add(Soldier(bases.first+const Offset(80,60),queue!));
-        queue=null;ticks=0;
+        final origin=trainingAt ?? bases.first;
+        soldiers.add(Soldier(origin+const Offset(80,60),queue!));
+        queue=null;trainingAt=null;ticks=0;
       }
       for(final unit in [...soldiers,...enemies]) {
         if(unit.cooldown>0) unit.cooldown--;
@@ -100,7 +104,9 @@ class _RtsState extends State<RtsScreen> {
   void train(bool marine){
     final cost=marine?75:50;
     if(queue!=null||cash<cost)return;
-    setState((){cash-=cost;queue=marine;ticks=0;});
+    if(marine && selectedBarracks==null)return;
+    if(!marine && selectedBase==null)return;
+    setState((){cash-=cost;queue=marine;trainingAt=marine?selectedBarracks:selectedBase;ticks=0;});
   }
   void buildBase(){
     final workers=chosen.where((s)=>!s.marine);
@@ -109,13 +115,25 @@ class _RtsState extends State<RtsScreen> {
     if(bases.any((b)=>(b-pos).distance<230))return;
     setState((){cash-=400;bases.add(pos);selectedBase=pos;chosen.clear();});
   }
+  void buildBarracks(){
+    final workers=chosen.where((u)=>!u.marine);
+    if(workers.isEmpty||cash<200)return;
+    final pos=workers.first.p+const Offset(65,0);
+    if(bases.any((b)=>(b-pos).distance<90)||barracks.any((b)=>(b-pos).distance<85))return;
+    setState((){cash-=200;barracks.add(pos);selectedBarracks=pos;selectedBase=null;chosen.clear();});
+  }
   void command(Offset at){
     final p=at+camera;
     final hits=soldiers.where((s)=>(s.p-p).distance<22);
-    if(hits.isNotEmpty){setState((){selectedBase=null;chosen..clear()..add(hits.first);});return;}
+    if(hits.isNotEmpty){setState((){selectedBase=null;selectedBarracks=null;chosen..clear()..add(hits.first);});return;}
     for(final base in bases){
       if((base-p).dx.abs()<60 && (base-p).dy.abs()<45){
-        setState((){selectedBase=base;chosen.clear();});return;
+        setState((){selectedBase=base;selectedBarracks=null;chosen.clear();});return;
+      }
+    }
+    for(final barrack in barracks){
+      if((barrack-p).dx.abs()<50 && (barrack-p).dy.abs()<40){
+        setState((){selectedBarracks=barrack;selectedBase=null;chosen.clear();});return;
       }
     }
     var ore=-1;
@@ -163,12 +181,12 @@ class _RtsState extends State<RtsScreen> {
           onPanEnd:(_)=>setState((){
             if(begin!=null&&end!=null&&(begin!-end!).distance>12){
               final rect=Rect.fromPoints(begin!+camera,end!+camera);
-              selectedBase=null;
+              selectedBase=null;selectedBarracks=null;
               chosen..clear()..addAll(soldiers.where((s)=>rect.contains(s.p)));
             }
             begin=null;end=null;
           }),
-          child:CustomPaint(size:Size.infinite,painter:_Map(soldiers,bases,rocks,chosen,camera,begin,end,enemies)))),
+          child:CustomPaint(size:Size.infinite,painter:_Map(soldiers,bases,rocks,chosen,camera,begin,end,enemies,barracks)))),
         Container(
           height:126,
           padding:const EdgeInsets.all(5),
@@ -188,7 +206,7 @@ class _RtsState extends State<RtsScreen> {
                 );
               }),
               child:ClipRect(child:CustomPaint(
-                painter:_MiniMap(soldiers,bases,rocks,camera,view),
+                painter:_MiniMap(soldiers,bases,rocks,camera,view,barracks),
                 child:const SizedBox.expand(),
               )),
               );
@@ -198,10 +216,10 @@ class _RtsState extends State<RtsScreen> {
               alignment:Alignment.center,
               decoration:BoxDecoration(color:const Color(0xff243640),border:Border.all(color:Colors.blueGrey)),
               child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                Text(selectedBase!=null?'커맨드 센터':chosen.isEmpty?'선택 없음':chosen.length==1?(chosen.first.marine?'보병':'광부'):'유닛 ${chosen.length}기',
+                Text(selectedBarracks!=null?'병영':selectedBase!=null?'본부':chosen.isEmpty?'선택 없음':chosen.length==1?(chosen.first.marine?'보병':'광부'):'유닛 ${chosen.length}기',
                   textAlign:TextAlign.center,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.bold)),
                 const SizedBox(height:5),
-                Text(selectedBase!=null?'기지 · 생산':chosen.isEmpty?'유닛이나 기지를 선택하세요':chosen.any((u)=>!u.marine)?'채굴 / 이동 / 확장':'이동 / 자동 공격',
+                Text(selectedBarracks!=null?'보병 생산':selectedBase!=null?'광부 생산':chosen.isEmpty?'유닛이나 기지를 선택하세요':chosen.any((u)=>!u.marine)?'채굴 / 이동 / 확장':'이동 / 자동 공격',
                   textAlign:TextAlign.center,style:const TextStyle(color:Colors.white70,fontSize:11)),
                 if(queue!=null)Text('생산 중: ${queue!?'보병':'광부'}',style:const TextStyle(color:Colors.cyanAccent,fontSize:11)),
               ]),
@@ -213,15 +231,16 @@ class _RtsState extends State<RtsScreen> {
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 const Text('명령',style:TextStyle(color:Colors.white70,fontSize:11)),
                 Expanded(child:SingleChildScrollView(child:Wrap(spacing:4,runSpacing:4,children:[
-                  if(selectedBase!=null||chosen.isEmpty) ...[
-                    _action('광부 50',()=>train(false)),
-                    _action('보병 75',()=>train(true)),
+                  if(selectedBase!=null) _action('광부 50',()=>train(false)),
+                  if(selectedBarracks!=null) _action('보병 75',()=>train(true)),
+                  if(chosen.any((u)=>!u.marine)) ...[
+                    _action('본부 400',buildBase),
+                    _action('병영 200',buildBarracks),
                   ],
-                  if(chosen.any((u)=>!u.marine)) _action('기지 400',buildBase),
                   if(chosen.isNotEmpty) _action('정지',()=>setState((){
                     for(final u in chosen){u.goal=null;u.ore=null;u.carrying=false;}
                   })),
-                  if(selectedBase==null&&chosen.isEmpty)const Text('유닛 또는 기지 선택',style:TextStyle(color:Colors.white54,fontSize:11)),
+                  if(selectedBase==null&&selectedBarracks==null&&chosen.isEmpty)const Text('유닛 또는 기지 선택',style:TextStyle(color:Colors.white54,fontSize:11)),
                   _action('◀',()=>moveCamera(-150,0)),
                   _action('▲',()=>moveCamera(0,-150)),
                   _action('▶',()=>moveCamera(150,0)),
@@ -236,7 +255,8 @@ class _RtsState extends State<RtsScreen> {
   );
 }
 class _Map extends CustomPainter{
-  _Map(this.units,this.bases,this.rocks,this.selected,this.camera,this.start,this.end,this.enemies);
+  _Map(this.units,this.bases,this.rocks,this.selected,this.camera,this.start,this.end,this.enemies,this.barracks);
+  final List<Offset> barracks;
   final List<Soldier> enemies;
   final List<Soldier> units;
   final List<Offset> bases,rocks;
@@ -259,6 +279,11 @@ class _Map extends CustomPainter{
     for(final b in bases){
       p.color=Colors.blueGrey;c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:b,width:120,height:90),const Radius.circular(8)),p);
       label(c,'COMMAND',b+const Offset(-42,-8),Colors.white);
+    }
+    for(final b in barracks){
+      p.color=Colors.brown.shade700;
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center:b,width:100,height:80),const Radius.circular(6)),p);
+      label(c,'BARRACKS',b+const Offset(-35,-8),Colors.white);
     }
     for(final u in [...units,...enemies]){
       p.color=enemies.contains(u)?Colors.red:(u.marine?Colors.blue:Colors.amber);
@@ -287,7 +312,8 @@ class _Map extends CustomPainter{
 }
 
 class _MiniMap extends CustomPainter {
-  _MiniMap(this.units,this.bases,this.rocks,this.camera,this.view);
+  _MiniMap(this.units,this.bases,this.rocks,this.camera,this.view,this.barracks);
+  final List<Offset> barracks;
   final List<Soldier> units;
   final List<Offset> bases,rocks;
   final Offset camera;
@@ -303,6 +329,10 @@ class _MiniMap extends CustomPainter {
     for(final base in bases){
       p.color=Colors.blueGrey.shade200;
       canvas.drawRect(Rect.fromCenter(center:Offset(base.dx*sx,base.dy*sy),width:8,height:7),p);
+    }
+    for(final b in barracks){
+      p.color=Colors.brown;
+      canvas.drawRect(Rect.fromCenter(center:Offset(b.dx*sx,b.dy*sy),width:7,height:6),p);
     }
     for(final unit in units){
       p.color=unit.marine?Colors.lightBlue:Colors.amber;
