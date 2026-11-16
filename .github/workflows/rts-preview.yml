@@ -25,9 +25,15 @@ jobs:
         working-directory: app
       - run: flutter analyze --no-fatal-infos lib/rts lib/main.dart
         working-directory: app
-      - name: Build RTS web preview
-        run: flutter build web --release --base-href /LandMine_Web/rts/ --pwa-strategy=none --no-web-resources-cdn
+      - run: flutter test test/rts_map_test.dart
         working-directory: app
+      - name: Build RTS web preview
+        working-directory: app
+        run: |
+          BUILD_NUMBER="$(git rev-list --count HEAD)"
+          flutter build web --release --dart-define=BUILD_NUMBER="$BUILD_NUMBER" --base-href /LandMine_Web/rts/ --pwa-strategy=none --no-web-resources-cdn
+      - name: Generate isolated RTS offline cache
+        run: python3 scripts/service_worker.py --namespace rts-preview --output app/build/web/sw.js
       - name: Publish preview to main Pages subdirectory
         run: |
           set -euo pipefail

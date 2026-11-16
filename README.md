@@ -39,3 +39,14 @@ dart analyze lib test tool
 flutter test
 dart tool/check_mining.dart
 ```
+
+## RTS 브랜치 PWA 테스트
+
+`feature/rts-starcraft-style` 브랜치를 푸시하면 RTS 맵 테스트와 웹 빌드 후
+`https://ninano0907.github.io/LandMine_Web/rts/`에 미리보기를 배포합니다.
+GitHub Actions의 `Deploy RTS preview` 작업 완료 후 접속하세요.
+
+지원 브라우저의 앱 설치 또는 Safari의 공유 → 홈 화면에 추가로 설치합니다.
+첫 온라인 실행에서 오프라인 캐시 저장을 마친 후 오프라인 실행이 가능합니다.
+RTS 캐시는 기존 광산 게임과 별도로 관리됩니다. 업데이트 후 앱을 완전히 닫고 다시 열어 주세요.
+화면 왼쪽 위 빌드 번호로 버전을 확인할 수 있습니다.

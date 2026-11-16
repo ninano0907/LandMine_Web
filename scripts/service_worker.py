@@ -1,19 +1,27 @@
 """Generate an atomic offline cache from the exact Flutter build output."""
+import argparse
 import hashlib
 import json
 from pathlib import Path
+parser = argparse.ArgumentParser()
+parser.add_argument('--namespace', default='landmine-web')
+parser.add_argument('--output', type=Path)
+args = parser.parse_args()
+if not args.namespace.replace('-', '').isalnum():
+    parser.error('namespace must contain only letters, digits, and hyphens')
 root = Path(__file__).resolve().parent.parent
 build = root / 'app/build/web'
 files = sorted(p for p in build.rglob('*') if p.is_file() and p.name not in ('sw.js', 'flutter_service_worker.js') and not any(part.startswith('.') for part in p.relative_to(build).parts))
 version = hashlib.sha256(b''.join(p.read_bytes() for p in files)).hexdigest()[:16]
 assets = ['./'] + ['./' + p.relative_to(build).as_posix() for p in files]
-(root / 'sw.js').write_text('''const CACHE = 'landmine-web-v2-''' + version + '''';
+(args.output or root / 'sw.js').write_text('''const CACHE = ''' + json.dumps(args.namespace + '-v2-' + version) + ''';
+const CACHE_PREFIX = ''' + json.dumps(args.namespace + '-') + ''';
 const ASSETS = ''' + json.dumps(assets) + ''';
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('landmine-web-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
