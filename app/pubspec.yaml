@@ -58,6 +58,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/units/1900/
+    - assets/units/1900/infantry/
+    - assets/buildings/command_center_open.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
