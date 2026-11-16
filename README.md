@@ -10,6 +10,21 @@
 
 ## 개발과 빌드
 
+### IntelliJ 실행 버튼
+
+1. IntelliJ에서 저장소 루트 `LandMine_Web` 또는 `app` 폴더를 엽니다.
+2. 상단 실행 구성에서 **Game (Chrome 8080)** 을 선택하고 **▶ Run** 을 누릅니다.
+3. Chrome이 열리면 게임을 실행할 수 있습니다. 종료는 IntelliJ의 **■ Stop** 버튼을 사용합니다.
+
+캐릭터 테스트는 **Character Test (Chrome 8081)** 을 선택합니다.
+실행 버튼을 누르면 해당 포트(게임 8080, 캐릭터 테스트 8081)를 사용하던 프로세스를 자동 종료한 뒤 새로 실행합니다.
+실행 시 의존성을 자동으로 준비합니다. Flutter SDK와 Chrome이 설치되어 있어야 하며,
+처음 의존성을 내려받을 때 인터넷 연결이 필요합니다.
+실행 구성이 표시되지 않으면 IntelliJ의 **Shell Script** 플러그인이 활성화되어 있는지 확인하고 프로젝트를 다시 여세요.
+Flutter SDK가 터미널의 PATH 또는 `/usr/local/bin`, `/opt/homebrew/bin`에 있어야 합니다.
+
+### 터미널 실행
+
 Flutter 3.38.9 / Dart 3.10 이상.
 
 ```sh

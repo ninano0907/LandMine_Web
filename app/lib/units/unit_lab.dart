@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'actions.dart';
 import 'characters/engineer.dart';
-import 'characters/shotgun.dart';
 import 'combat/ranged_unit.dart';
 import 'game_unit.dart';
 import '../resources/mineral_deposit.dart';
@@ -26,13 +25,13 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
   double factoryElapsed = 0;
   final upgrades = UnitUpgrades();
   final sprites = UnitSprites();
-  UnitKind kind = UnitKind.engineer;
   late GameUnit unit;
+  final units = <GameUnit>[];
   late final Ticker ticker;
   Duration previous = Duration.zero;
   bool selected = false;
   bool paused = false;
-  TrainingSetup targetSetup = TrainingSetup.eightDirections;
+  bool barracksSelected = false;
   String? orderHint;
 
   @override
@@ -48,7 +47,11 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
         setState(() {
           final dt = seconds.clamp(0.0, 0.1);
           factoryElapsed += dt;
-          if (unit.needsUpdate) unit.update(dt);
+          for (final current in units) {
+            if (current.needsUpdate) current.update(dt);
+          }
+          final recruit = world.barracks.update(dt, upgrades, units);
+          if (recruit != null) units.add(recruit);
         });
       }
     })..start();
@@ -67,33 +70,59 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
   void reset() {
     world = UnitLabWorld();
     factoryElapsed = 0;
-    world.configureTargets(targetSetup);
-    unit = kind.spawn(
-      kind == UnitKind.engineer ? UnitLabWorld.spawn : UnitLabWorld.combatSpawn,
-      upgrades,
-      grid: world.grid,
-    );
+    barracksSelected = false;
+    units
+      ..clear()
+      ..addAll([
+        for (final position in UnitLabWorld.workerSpawns)
+          UnitKind.engineer.spawn(position, upgrades, grid: world.grid)
+            ..facing = 3 * math.pi / 4,
+      ]);
+    unit = units.first;
     orderHint = null;
-    unit.facing = 3 * math.pi / 4;
     selected = false;
     paused = false;
   }
 
   void command(Offset point) {
-    final body = Rect.fromLTWH(
-      unit.position.x - 30,
-      unit.position.y - 68,
-      60,
-      82,
-    );
+    // Prefer the frontmost character when sprite hit boxes overlap.
+    final hitUnits = units.where((candidate) {
+      final scale = candidate is EngineerUnit || candidate is RangedUnit
+          ? 0.5
+          : 1.0;
+      return Rect.fromLTWH(
+        candidate.position.x - 26 * scale,
+        candidate.position.y - 60 * scale,
+        52 * scale,
+        74 * scale,
+      ).contains(point);
+    }).toList()..sort((a, b) => b.position.y.compareTo(a.position.y));
+    if (hitUnits.isNotEmpty) {
+      setState(() {
+        unit = hitUnits.first;
+        barracksSelected = false;
+        selected = true;
+        orderHint = null;
+      });
+      return;
+    }
+    if (world.barracks.contains(math.Point(point.dx, point.dy))) {
+      setState(() {
+        barracksSelected = true;
+        selected = false;
+      });
+      return;
+    }
     MineralDeposit? hitMineral;
-    for (final deposit in world.deposits.where((d) => !d.depleted)) {
+    final clickableDeposits = world.deposits.where((d) => !d.depleted).toList()
+      ..sort((a, b) => b.position.y.compareTo(a.position.y));
+    for (final deposit in clickableDeposits) {
       final mineral = Offset(deposit.position.x, deposit.position.y);
       if (Rect.fromLTWH(
-        mineral.dx - 38,
-        mineral.dy - 58,
-        76,
-        76,
+        mineral.dx - MineralDeposit.width / 2,
+        mineral.dy - MineralDeposit.height + MineralDeposit.bottomOffset,
+        MineralDeposit.width,
+        MineralDeposit.height,
       ).contains(point)) {
         hitMineral = deposit;
         break;
@@ -101,24 +130,6 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
     }
     setState(() {
       final current = unit;
-      if (selected && current is RangedUnit) {
-        for (final target in world.targets) {
-          if (Rect.fromLTWH(
-            target.position.x - 22,
-            target.position.y - 52,
-            44,
-            66,
-          ).contains(point)) {
-            paused = false;
-            orderHint = current.fireAt(target, nearby: world.targets)
-                ? null
-                : target.alive
-                ? '사거리 밖입니다. 표적 가까이 이동하세요.'
-                : '표적을 초기화해 주세요.';
-            return;
-          }
-        }
-      }
       if (selected && current is EngineerUnit && hitMineral != null) {
         paused = false;
         current.gather(hitMineral, world.commandCenter);
@@ -127,8 +138,6 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
           world.commandCenter.contains(math.Point(point.dx, point.dy))) {
         paused = false;
         current.returnCargo(world.commandCenter);
-      } else if (body.contains(point)) {
-        selected = true;
       } else if (selected) {
         orderHint = null;
         unit.moveTo(
@@ -170,29 +179,11 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
     current.gather(available.first, world.commandCenter);
   }
 
-  void shootNearest() {
-    final current = unit;
-    if (current is! RangedUnit) return;
-    final alive = world.targets.where((target) => target.alive).toList()
-      ..sort(
-        (a, b) => current.position
-            .distanceTo(a.position)
-            .compareTo(current.position.distanceTo(b.position)),
-      );
-    if (alive.isEmpty) {
-      orderHint = '표적을 초기화해 주세요.';
-      return;
-    }
+  void train(UnitKind kind) => setState(() {
+    world.barracks.enqueue(kind);
+    barracksSelected = true;
+    selected = false;
     paused = false;
-    orderHint = current.fireAt(alive.first, nearby: world.targets)
-        ? null
-        : '사거리 밖입니다.';
-  }
-
-  void changeTargets(TrainingSetup setup) => setState(() {
-    targetSetup = setup;
-    reset();
-    selected = true;
   });
 
   @override
@@ -217,25 +208,34 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Text(
-                  '유닛 액션 테스트',
+                  '본진 · 훈련소',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  '보관 금 ${world.commandCenter.storedMinerals}',
+                  '보관 금 ${world.commandCenter.storedMinerals} · 병력 ${units.whereType<RangedUnit>().length}기',
                   style: const TextStyle(color: Colors.cyanAccent),
                 ),
-                for (final option in UnitKind.values)
-                  ChoiceChip(
-                    label: Text(option.label),
-                    selected: kind == option,
-                    onSelected: (_) => setState(() {
-                      kind = option;
-                      reset();
-                    }),
+                OutlinedButton(
+                  onPressed: () => setState(() {
+                    unit = units.firstWhere((unit) => unit is EngineerUnit);
+                    selected = true;
+                    barracksSelected = false;
+                  }),
+                  child: const Text('일꾼'),
+                ),
+                for (final option in [UnitKind.soldier, UnitKind.shotgun])
+                  FilledButton(
+                    key: ValueKey('train-${option.name}'),
+                    onPressed: () => train(option),
+                    child: Text('${option.label} 생산'),
                   ),
+                const OutlinedButton(
+                  onPressed: null,
+                  child: Text('기마병 · 마구간 필요'),
+                ),
                 OutlinedButton(
                   onPressed: () => setState(() => paused = !paused),
                   child: Text(paused ? '재개' : '일시정지'),
@@ -264,12 +264,26 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              unit is RangedUnit
-                  ? '유닛 선택 → 바닥 클릭으로 이동 · 표적 클릭으로 연속 사격 · 이동/정지하면 사격 중단'
-                  : '일꾼 선택 → 금광석 클릭 · 곡괭이질 3회 → 운반·입고 → 자동 반복',
+              '보병·산탄병 생산 → 훈련소에서 3초 후 출병 · 유닛 선택 → 바닥 클릭으로 이동 · 일꾼은 광물 클릭으로 채굴',
               style: const TextStyle(color: Colors.white70),
             ),
           ),
+          if (barracksSelected || world.barracks.queue.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Column(
+                children: [
+                  Text(
+                    world.barracks.queue.isEmpty
+                        ? '훈련소 · 보병 또는 산탄병 생산을 선택하세요.'
+                        : '훈련 중: ${world.barracks.queue.first.label} · ${(world.barracks.progress * 100).floor()}% · 대기 ${world.barracks.queue.length - 1}기',
+                    style: const TextStyle(color: Colors.amberAccent),
+                  ),
+                  if (world.barracks.queue.isNotEmpty)
+                    LinearProgressIndicator(value: world.barracks.progress),
+                ],
+              ),
+            ),
           Expanded(
             child: Center(
               child: Padding(
@@ -287,10 +301,13 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
                           unit,
                           selected,
                           sprites,
-                          unit is RangedUnit ? [] : world.deposits,
+                          world.deposits,
                           world.commandCenter,
                           (factoryElapsed * 5).floor() % 4,
-                          unit is RangedUnit ? world.targets : [],
+                          const [],
+                          units: units,
+                          barracks: world.barracks,
+                          barracksSelected: barracksSelected,
                         ),
                       ),
                     ),
@@ -317,28 +334,6 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
                     }),
                     child: const Text('정지 / 대기'),
                   ),
-                  if (unit is RangedUnit) ...[
-                    FilledButton(
-                      onPressed: () => setState(shootNearest),
-                      child: const Text('사격'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () =>
-                          changeTargets(TrainingSetup.eightDirections),
-                      child: const Text('8방향 표적'),
-                    ),
-                    if (unit is ShotgunUnit) ...[
-                      OutlinedButton(
-                        onPressed: () =>
-                            changeTargets(TrainingSetup.closeSingle),
-                        child: const Text('근거리 1기'),
-                      ),
-                      OutlinedButton(
-                        onPressed: () => changeTargets(TrainingSetup.farGroup),
-                        child: const Text('원거리 3기'),
-                      ),
-                    ],
-                  ],
                   if (unit.supports(UnitAction.gather))
                     FilledButton(
                       onPressed: () => setState(mineNearest),
@@ -357,7 +352,7 @@ class _UnitLabState extends State<UnitLab> with SingleTickerProviderStateMixin {
           Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
-              '${kind.label} · ${paused ? "일시정지" : motionLabel} '
+              '${unit.label} · ${paused ? "일시정지" : motionLabel} '
               '· 위치 ${unit.position.x.toStringAsFixed(1)}, ${unit.position.y.toStringAsFixed(1)} '
               '${unit is EngineerUnit ? "· ${(unit as EngineerUnit).hasCargo ? "찬 배낭" : "빈 배낭"} · 금 ${(unit as EngineerUnit).cargo} " : ""}'
               '${unit is RangedUnit ? "· 발사 ${(unit as RangedUnit).shotsFired} · 적중 ${(unit as RangedUnit).lastHits.length}기 · 피해 ${(unit as RangedUnit).lastHits.values.fold(0, (sum, value) => sum + value)} " : ""}'

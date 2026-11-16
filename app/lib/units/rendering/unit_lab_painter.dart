@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../game_unit.dart';
 import '../animation.dart';
@@ -9,6 +10,7 @@ import '../combat/ranged_unit.dart';
 import 'unit_sprites.dart';
 import 'factory_animation.dart';
 import '../../buildings/command_center.dart';
+import '../../buildings/barracks.dart';
 import '../../resources/mineral_deposit.dart';
 
 class UnitLabPainter extends CustomPainter {
@@ -19,8 +21,14 @@ class UnitLabPainter extends CustomPainter {
     this.minerals,
     this.commandCenter,
     this.factoryFrame,
-    this.targets,
-  );
+    this.targets, {
+    this.units = const [],
+    this.barracks,
+    this.barracksSelected = false,
+  });
+  final List<GameUnit> units;
+  final Barracks? barracks;
+  final bool barracksSelected;
   final List<GameUnit> targets;
   final CommandCenter commandCenter;
   final int factoryFrame;
@@ -46,55 +54,215 @@ class UnitLabPainter extends CustomPainter {
     for (var y = 0.0; y <= size.height; y += commandCenter.grid.tileSize) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
-    // Each crystal is an independent click target around the starting unit.
-    for (final deposit in minerals) {
-      if (deposit.depleted) continue;
-      final mineral = Offset(deposit.position.x, deposit.position.y);
-      if (mineral == miningTarget) {
-        paint
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = Colors.amberAccent;
-        canvas.drawOval(
-          Rect.fromCenter(center: mineral, width: 78, height: 26),
-          paint,
-        );
-      }
-      for (final shard in [
-        (const Offset(-17, 0), 30.0),
-        (const Offset(0, -3), 48.0),
-        (const Offset(19, 2), 35.0),
-      ]) {
-        final base = mineral + shard.$1;
-        final h = shard.$2;
-        final crystal = Path()
-          ..moveTo(base.dx, base.dy - h)
-          ..lineTo(base.dx + 13, base.dy - h + 17)
-          ..lineTo(base.dx + 10, base.dy)
-          ..lineTo(base.dx - 12, base.dy)
-          ..lineTo(base.dx - 15, base.dy - h + 19)
-          ..close();
-        paint
-          ..style = PaintingStyle.fill
-          ..color = const Color(0xffb77a12);
-        canvas.drawPath(crystal, paint);
-        final facet = Path()
-          ..moveTo(base.dx, base.dy - h)
-          ..lineTo(base.dx + 13, base.dy - h + 17)
-          ..lineTo(base.dx + 10, base.dy)
-          ..lineTo(base.dx, base.dy - 4)
-          ..close();
-        canvas.drawPath(facet, paint..color = const Color(0xffffdc73));
-      }
-    }
+    paintMineralBank(canvas);
     paintShootingRange(canvas);
     paintTargets(canvas);
-    if (unit.position.y < commandCenter.top + commandCenter.height) {
-      paintCharacter(canvas, paint);
+    final characters = [
+      ...(units.isEmpty ? [unit] : units),
+    ]..sort((a, b) => a.position.y.compareTo(b.position.y));
+    var buildingPainted = false;
+    for (final character in characters) {
+      if (!buildingPainted &&
+          character.position.y >= commandCenter.top + commandCenter.height) {
+        paintCommandCenter(canvas);
+        paintBarracks(canvas);
+        buildingPainted = true;
+      }
+      UnitLabPainter(
+        character,
+        selected && identical(character, unit),
+        sprites,
+        minerals,
+        commandCenter,
+        factoryFrame,
+        const [],
+      ).paintCharacter(canvas, Paint());
+    }
+    if (!buildingPainted) {
       paintCommandCenter(canvas);
+      paintBarracks(canvas);
+    }
+  }
+
+  void paintBarracks(Canvas canvas) {
+    final building = barracks;
+    if (building == null) return;
+    final area = Rect.fromLTWH(
+      building.left,
+      building.top,
+      building.width,
+      building.height,
+    );
+    if (barracksSelected) {
+      canvas.drawRect(
+        area,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = Colors.lightGreenAccent,
+      );
+    }
+    final image = sprites[UnitSprites.barracksAsset];
+    if (image != null) {
+      final width = building.width * 1.2;
+      final height = width * image.height / image.width;
+      canvas.drawImageRect(
+        image,
+        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+        Rect.fromLTWH(
+          area.center.dx - width / 2,
+          area.bottom - height + 4,
+          width,
+          height,
+        ),
+        Paint()..filterQuality = FilterQuality.none,
+      );
     } else {
-      paintCommandCenter(canvas);
-      paintCharacter(canvas, paint);
+      canvas.drawRect(
+        area.deflate(6),
+        Paint()..color = const Color(0xff6c7562),
+      );
+    }
+    final label = TextPainter(
+      text: const TextSpan(
+        text: '훈련소 · 보병 / 산탄병',
+        style: TextStyle(color: Colors.amberAccent, fontSize: 11),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    label.paint(canvas, Offset(area.left, area.bottom + 5));
+  }
+
+  void paintMineralBank(Canvas canvas) {
+    final active = minerals.where((deposit) => !deposit.depleted).toList();
+    if (active.isEmpty) return;
+    Rect tileBounds(MineralDeposit deposit) => Rect.fromLTWH(
+      deposit.position.x - MineralDeposit.width / 2,
+      deposit.position.y - MineralDeposit.height + MineralDeposit.bottomOffset,
+      MineralDeposit.width,
+      MineralDeposit.height,
+    );
+    double ridge(double x) =>
+        12 + math.sin(x * 0.036) * 7 + math.sin(x * 0.091) * 3;
+    Path cliffTile(MineralDeposit deposit) {
+      final rect = tileBounds(deposit);
+      final path = Path()..moveTo(rect.left, rect.bottom);
+      for (var x = rect.left; x <= rect.right; x += 4) {
+        path.lineTo(x, rect.top + ridge(x));
+      }
+      path.lineTo(rect.right, rect.bottom);
+      return path..close();
+    }
+
+    var bank = cliffTile(active.first);
+    for (final deposit in active.skip(1)) {
+      bank = Path.combine(PathOperation.union, bank, cliffTile(deposit));
+    }
+    final bounds = bank.getBounds();
+    canvas.drawPath(
+      bank.shift(const Offset(0, 5)),
+      Paint()..color = const Color(0x65000000),
+    );
+    canvas.drawPath(
+      bank,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xffa4a294), Color(0xff827f74), Color(0xff50574e)],
+        ).createShader(bounds),
+    );
+    canvas.save();
+    canvas.clipPath(bank);
+    // Long irregular vertical faces give the connected mass its cliff silhouette.
+    for (var i = 0; i < 100; i++) {
+      final x = bounds.left + i * 7.0;
+      if (x > bounds.right) break;
+      final bend = math.sin(i * 2.3) * 4;
+      final face = Path()
+        ..moveTo(x, bounds.top - 5)
+        ..lineTo(x + 5, bounds.top - 5)
+        ..lineTo(x + 3 + bend, bounds.center.dy)
+        ..lineTo(x + 8 + bend, bounds.bottom)
+        ..lineTo(x + bend, bounds.bottom)
+        ..lineTo(x - 2 + bend, bounds.center.dy)
+        ..close();
+      canvas.drawPath(
+        face,
+        Paint()
+          ..color = i % 3 == 0
+              ? const Color(0x668b8b7e)
+              : const Color(0x55505249),
+      );
+      final crack = Path()
+        ..moveTo(x + 2, bounds.top + (i % 4) * 5)
+        ..lineTo(x + bend, bounds.center.dy - 7)
+        ..lineTo(x - 2 + bend, bounds.center.dy + 9)
+        ..lineTo(x + 3 + bend, bounds.bottom);
+      canvas.drawPath(
+        crack,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = i % 5 == 0 ? 2.2 : 0.8
+          ..color = const Color(0x99606455),
+      );
+      if (i % 9 == 3) {
+        canvas.drawPath(
+          crack,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.45
+            ..color = const Color(0xffc3a361),
+        );
+      }
+    }
+    // Vegetation hugs the ridge instead of covering the exposed rock wall.
+    for (final deposit in active) {
+      final rect = tileBounds(deposit);
+      final crown = Path()..moveTo(rect.left, rect.top + ridge(rect.left));
+      for (var x = rect.left; x <= rect.right; x += 4) {
+        crown.lineTo(x, rect.top + ridge(x));
+      }
+      for (var x = rect.right; x >= rect.left; x -= 4) {
+        crown.lineTo(x, rect.top + ridge(x) + 7 + math.sin(x * .17) * 3);
+      }
+      crown.close();
+      canvas.drawPath(crown, Paint()..color = const Color(0xff435c37));
+      for (var x = rect.left + 3; x < rect.right; x += 9) {
+        canvas.drawCircle(
+          Offset(x, rect.top + ridge(x) + 3),
+          2 + (math.sin(x) + 1),
+          Paint()..color = const Color(0xff617343),
+        );
+      }
+    }
+    // Small dark patches and ledges break up the vertical pillars naturally.
+    for (var i = 0; i < 58; i++) {
+      final x = bounds.left + i * 11.3;
+      final y = bounds.top + 28 + (i * 19 % 49);
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x + 4 + i % 5, y - 2),
+        Paint()
+          ..color = const Color(0x66626955)
+          ..strokeWidth = 1.2,
+      );
+    }
+    canvas.restore();
+    for (final deposit in active) {
+      if (Offset(deposit.position.x, deposit.position.y) == miningTarget) {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: Offset(deposit.position.x, deposit.position.y),
+            width: 54,
+            height: 10,
+          ),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5
+            ..color = const Color(0x99e0bf67),
+        );
+      }
     }
   }
 
@@ -193,7 +361,7 @@ class UnitLabPainter extends CustomPainter {
     final image = sprites[UnitSprites.factoryAsset];
     if (image != null) {
       // Visual proportions are independent of the fixed logical 4x3 footprint.
-      final width = commandCenter.width * 1.2;
+      final width = commandCenter.width * 1.5;
       final height = width * image.height / image.width;
       final destination = Rect.fromLTWH(
         area.center.dx - width / 2,
@@ -230,8 +398,15 @@ class UnitLabPainter extends CustomPainter {
   }
 
   void paintCharacter(Canvas canvas, Paint paint) {
-    paintBody(canvas, paint);
     final current = unit;
+    final smallWorker = current is EngineerUnit || current is RangedUnit;
+    if (smallWorker) {
+      canvas.save();
+      canvas.translate(unit.position.x, unit.position.y);
+      canvas.scale(0.5);
+      canvas.translate(-unit.position.x, -unit.position.y);
+    }
+    paintBody(canvas, paint);
     if (current is EngineerUnit &&
         current.hasCargo &&
         (sprites[UnitSprites.carryAsset] == null ||
@@ -247,6 +422,7 @@ class UnitLabPainter extends CustomPainter {
         Paint()..color = Colors.amberAccent,
       );
     }
+    if (smallWorker) canvas.restore();
   }
 
   void paintBody(Canvas canvas, Paint paint) {

@@ -6,11 +6,13 @@ import 'package:flutter/services.dart';
 /// Owns decoded images and reloads them independently; one failure cannot hide a unit.
 class UnitSprites extends ChangeNotifier {
   static const idleAsset = 'assets/units/1900/engineer_idle.png';
+  static const barracksAsset = 'assets/buildings/barracks_bottle_range.png';
   static const carryAsset = 'assets/units/1900/engineer_walk_loaded.png';
   static const walkAsset = 'assets/units/1900/engineer_walk_empty.png';
   static const workAsset = 'assets/units/1900/engineer_repair.png';
   static const mineAsset = 'assets/units/1900/engineer_mine.png';
-  static const factoryAsset = 'assets/buildings/command_center_open.png';
+  static const factoryAsset =
+      'assets/buildings/command_center_wash_plant_compact_twin.png';
   static const pistolWalkAsset = 'assets/units/1900/infantry/pistol_walk.png';
   static const pistolFireAsset = 'assets/units/1900/infantry/pistol_fire.png';
   static const shotgunWalkAsset = 'assets/units/1900/infantry/shotgun_walk.png';
@@ -33,6 +35,7 @@ class UnitSprites extends ChangeNotifier {
         workAsset,
         mineAsset,
         factoryAsset,
+        barracksAsset,
         pistolWalkAsset,
         pistolFireAsset,
         shotgunWalkAsset,

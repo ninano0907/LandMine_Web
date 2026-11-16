@@ -88,14 +88,20 @@ class EngineerUnit extends GameUnit {
       miningApproach(position, target),
       for (var i = 0; i < 8; i++)
         math.Point(
-          target.x + math.cos(i * math.pi / 4) * 58,
-          target.y + math.sin(i * math.pi / 4) * 58,
+          target.x + math.cos(i * math.pi / 4) * miningStandOff,
+          target.y + math.sin(i * math.pi / 4) * miningStandOff,
         ),
     ];
     candidates.sort(
       (a, b) => position.distanceTo(a).compareTo(position.distanceTo(b)),
     );
+    final reserved = _source?.miningPosition(this);
+    if (reserved != null) candidates.insert(0, reserved);
     for (final candidate in candidates) {
+      final source = _source;
+      if (source != null && !source.reserveMiningPosition(this, candidate)) {
+        continue;
+      }
       if (travelTo(candidate)) {
         _phase = GatheringPhase.approaching;
         if (moving) {
@@ -105,6 +111,7 @@ class EngineerUnit extends GameUnit {
         }
         return;
       }
+      source?.releaseMiningPosition(this);
     }
     stop();
   }
@@ -134,6 +141,7 @@ class EngineerUnit extends GameUnit {
 
   @override
   void cancelWork() {
+    _source?.releaseMiningPosition(this);
     _mineral = null;
     _source = null;
     _home = null;

@@ -49,7 +49,7 @@ void main() {
   );
   final source = MineralDeposit(const Point(400.0, 410.0));
   final worker = EngineerUnit(
-    position: const Point(400.0, 352.0),
+    position: const Point(400.0, 384.0),
     upgrades: UnitUpgrades(),
     grid: grid,
   );
@@ -115,7 +115,11 @@ void main() {
   worker.update(10);
   check(center.storedMinerals == 5, 'Idle cannot credit the same load again');
 
-  for (var direction = 0; direction < 8; direction++) {
+  for (
+    var direction = 0;
+    direction < UnitLabWorld().deposits.length;
+    direction++
+  ) {
     final world = UnitLabWorld();
     final unit = EngineerUnit(
       position: UnitLabWorld.spawn,
@@ -135,6 +139,10 @@ void main() {
         'Bag state follows actual cargo',
       );
       if (unit.gatheringPhase == GatheringPhase.mining) {
+        check(
+          unit.position.distanceTo(mineral.position) <= 26.01,
+          'Pickaxe swings close to the crystal',
+        );
         check(
           !unit.hasCargo,
           'Every new mining cycle starts with an empty bag',
@@ -156,10 +164,128 @@ void main() {
     );
   }
 
+  final startingWorld = UnitLabWorld();
+  final startingWorkers = [
+    for (final position in UnitLabWorld.workerSpawns)
+      EngineerUnit(
+        position: position,
+        upgrades: UnitUpgrades(),
+        grid: startingWorld.grid,
+      ),
+  ];
+  check(startingWorkers.length == 4, 'Start with four workers');
+  for (var i = 0; i < startingWorkers.length; i++) {
+    final worker = startingWorkers[i];
+    check(
+      startingWorld.grid.walkable(worker.position, radius: worker.radius),
+      'Starting worker is outside the command center',
+    );
+    worker.gather(
+      startingWorld.deposits[i % startingWorld.deposits.length],
+      startingWorld.commandCenter,
+    );
+  }
+  for (var step = 0; step < 1200; step++) {
+    for (final worker in startingWorkers) {
+      worker.update(0.05);
+      check(
+        startingWorld.grid.walkable(worker.position, radius: worker.radius),
+        'Concurrent workers stay outside buildings',
+      );
+    }
+    check(
+      startingWorld.deposits.fold<int>(
+                0,
+                (sum, deposit) => sum + deposit.remaining,
+              ) +
+              startingWorkers.fold<int>(
+                0,
+                (sum, worker) => sum + worker.cargo,
+              ) +
+              startingWorld.commandCenter.storedMinerals ==
+          startingWorld.deposits.length * 1500,
+      'Four workers conserve all gold',
+    );
+  }
+  for (var i = 0; i < startingWorkers.length; i++) {
+    check(
+      startingWorld.deposits[i % startingWorld.deposits.length].remaining <
+          1500,
+      'Each starting worker mines its assigned deposit',
+    );
+  }
+  check(
+    startingWorld.commandCenter.storedMinerals >= 40,
+    'Four workers complete repeated deliveries',
+  );
+
+  final sharedWorld = UnitLabWorld();
+  final sharedOre = sharedWorld.deposits.last;
+  final sharedWorkers = [
+    for (final position in UnitLabWorld.workerSpawns)
+      EngineerUnit(
+        position: position,
+        upgrades: UnitUpgrades(),
+        grid: sharedWorld.grid,
+      ),
+  ];
+  for (final worker in sharedWorkers) {
+    worker.gather(sharedOre, sharedWorld.commandCenter);
+    check(
+      sharedOre.miningPosition(worker) != null,
+      'Shared ore assigns a mining position',
+    );
+  }
+  final worked = <EngineerUnit>{};
+  var simultaneous = false;
+  for (var step = 0; step < 1200; step++) {
+    for (final worker in sharedWorkers) {
+      worker.update(0.05);
+      if (worker.gatheringPhase == GatheringPhase.mining) worked.add(worker);
+    }
+    final mining = sharedWorkers
+        .where((worker) => worker.gatheringPhase == GatheringPhase.mining)
+        .toList();
+    if (mining.length == 4) simultaneous = true;
+    for (var i = 0; i < mining.length; i++) {
+      for (var j = i + 1; j < mining.length; j++) {
+        check(
+          mining[i].position.distanceTo(mining[j].position) >= 17.99,
+          'Workers sharing a mineral have separate mining positions',
+        );
+      }
+    }
+    check(
+      sharedOre.remaining +
+              sharedWorkers.fold<int>(0, (sum, worker) => sum + worker.cargo) +
+              sharedWorld.commandCenter.storedMinerals ==
+          1500,
+      'Shared mineral conserves gold through concurrent mining',
+    );
+  }
+  check(
+    worked.length == 4 && simultaneous,
+    'Four workers mine one mineral at the same time',
+  );
+  check(
+    sharedWorld.commandCenter.storedMinerals >= 40,
+    'Shared mineral supports repeated deliveries',
+  );
+  sharedWorkers.first.stop();
+  check(
+    sharedOre.miningPosition(sharedWorkers.first) == null,
+    'Stopping releases the mining position',
+  );
+  sharedWorkers.first.gather(sharedOre, sharedWorld.commandCenter);
+  check(
+    sharedOre.miningPosition(sharedWorkers.first) != null,
+    'Worker can rejoin shared mineral',
+  );
+
   final finalWorld = UnitLabWorld();
   final small = MineralDeposit(const Point(400.0, 410.0), amount: 2);
   final lastWorker = EngineerUnit(
-    position: const Point(400.0, 352.0),
+    position: UnitLabWorld.spawn,
     upgrades: UnitUpgrades(),
     grid: finalWorld.grid,
   );
@@ -183,6 +309,6 @@ void main() {
     'Removing a building releases its tiles',
   );
   stdout.writeln(
-    'PASS: $checks checks for 4x3 tiles, routing, exactly three impacts, eight-direction hauling and resource conservation.',
+    'PASS: $checks checks for 4x3 tiles, routing, exactly three impacts, mineral hauling, shared mining and resource conservation.',
   );
 }
