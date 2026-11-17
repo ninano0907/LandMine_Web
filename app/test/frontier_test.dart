@@ -25,7 +25,10 @@ void main() {
       await tester.tap(find.text('방어 봇 배치'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
-      await tester.tap(find.text('탑 1번 광맥'));
+      final firstVein = find.text('탑 1번 광맥');
+      await tester.ensureVisible(firstVein);
+      await tester.pump();
+      await tester.tap(firstVein);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
       await tester.tap(find.byKey(const ValueKey('deploy-bot')));
