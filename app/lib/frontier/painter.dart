@@ -136,25 +136,39 @@ class FrontierPainter extends CustomPainter {
     t.paint(c, at - Offset(t.width / 2, 0));
   }
 
-  @override
-  void paint(Canvas c, Size size) {
-    c.drawColor(const Color(0xffc99c64), BlendMode.src);
-    c.save();
-    c.scale(zoom);
-    c.translate(-camera.dx, -camera.dy);
-    final visible = Rect.fromLTWH(
-      camera.dx - 220,
-      camera.dy - 220,
-      size.width / zoom + 440,
-      size.height / zoom + 440,
-    );
-    box(c, Offset.zero & FrontierGame.world, sand, 0);
+  // Record immutable terrain once per game, not once per 33 ms frame.
+  static final Expando<ui.Picture> _sandByGame = Expando<ui.Picture>('sand');
+  static final Expando<ui.Picture> _decorByGame = Expando<ui.Picture>('decor');
+
+  ui.Picture _recordTerrain(void Function(Canvas) draw) {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, Offset.zero & FrontierGame.world);
+    draw(canvas);
+    return recorder.endRecording();
+  }
+
+  ui.Picture _sandPicture() {
+    final cached = _sandByGame[game];
+    if (cached != null) return cached;
+    final result = _recordTerrain((canvas) => _paintSand(canvas));
+    _sandByGame[game] = result;
+    return result;
+  }
+
+  ui.Picture _decorPicture() {
+    final cached = _decorByGame[game];
+    if (cached != null) return cached;
+    final result = _recordTerrain((canvas) => _paintDecor(canvas));
+    _decorByGame[game] = result;
+    return result;
+  }
+
+  void _paintSand(Canvas c) {
     // Soft sandy patches replace the old tiled military battlefield.
     final rng = math.Random(19);
     for (var i = 0; i < 460; i++) {
       final at = Offset(rng.nextDouble() * 3600, rng.nextDouble() * 2400);
       final r = 20 + rng.nextDouble() * 100;
-      if (!visible.contains(at)) continue;
       final patch = Rect.fromCenter(
         center: at,
         width: r * 2.6,
@@ -177,6 +191,68 @@ class FrontierPainter extends CustomPainter {
         );
       }
     }
+  }
+
+  void _paintDecor(Canvas c) {
+    final decor = math.Random(71);
+    for (var i = 0; i < 230; i++) {
+      final at = Offset(
+        90 + decor.nextDouble() * 3420,
+        90 + decor.nextDouble() * 2220,
+      );
+      final type = i % 5;
+      // Consume random values for every decoration, even when off-screen.
+      // Otherwise camera movement changes the random sequence and positions.
+      final variation = decor.nextDouble();
+      if (game.sites.take(1).any((s) => (s.position - at).distance < 220) ||
+          game.defense.veins.any((v) => (v.position - at).distance < 145) ||
+          DefenseWorld.campCandidates.any((v) => (v - at).distance < 150) ||
+          game.defense.jungle.any((v) => (v.position - at).distance < 130) ||
+          DefenseWorld.paths.any(
+            (route) => List.generate(
+              route.length - 1,
+              (j) => DefenseWorld.segmentDistance(at, route[j], route[j + 1]),
+            ).any((d) => d < 65),
+          )) {
+        continue;
+      }
+      if (type == 0) {
+        cactus(c, at, .7 + variation * .6);
+      } else if (type == 1) {
+        rock(c, at, 35 + variation * 28);
+      } else if (type == 2) {
+        oval(c, at + const Offset(2, 4), 40, 16, const Color(0x227c6139));
+        for (var j = 0; j < 5; j++) {
+          oval(
+            c,
+            at + Offset((j - 2) * 7.0, -(j % 2) * 8.0),
+            20,
+            22,
+            const Color(0xff9ba765),
+          );
+        }
+      } else if (type == 3) {
+        oval(c, at, 10, 5, const Color(0xffc19b62));
+      } else {
+        rock(c, at, 15);
+      }
+    }
+  }
+
+  @override
+  void paint(Canvas c, Size size) {
+    c.drawColor(const Color(0xffc99c64), BlendMode.src);
+    c.save();
+    c.scale(zoom);
+    c.translate(-camera.dx, -camera.dy);
+    final visible = Rect.fromLTWH(
+      camera.dx - 220,
+      camera.dy - 220,
+      size.width / zoom + 440,
+      size.height / zoom + 440,
+    );
+    box(c, Offset.zero & FrontierGame.world, sand, 0);
+    c.drawPicture(_sandPicture());
     for (final route in DefenseWorld.paths) {
       final road = Path()..addPolygon(route, false);
       p
@@ -232,50 +308,7 @@ class FrontierPainter extends CustomPainter {
       const Color(0xff918c76),
       3,
     );
-    final decor = math.Random(71);
-    for (var i = 0; i < 230; i++) {
-      final at = Offset(
-        90 + decor.nextDouble() * 3420,
-        90 + decor.nextDouble() * 2220,
-      );
-      final type = i % 5;
-      // Consume random values for every decoration, even when off-screen.
-      // Otherwise camera movement changes the random sequence and positions.
-      final variation = decor.nextDouble();
-      if (!visible.contains(at) ||
-          game.sites.take(1).any((s) => (s.position - at).distance < 220) ||
-          game.defense.veins.any((v) => (v.position - at).distance < 145) ||
-          DefenseWorld.campCandidates.any((v) => (v - at).distance < 150) ||
-          game.defense.jungle.any((v) => (v.position - at).distance < 130) ||
-          DefenseWorld.paths.any(
-            (route) => List.generate(
-              route.length - 1,
-              (j) => DefenseWorld.segmentDistance(at, route[j], route[j + 1]),
-            ).any((d) => d < 65),
-          )) {
-        continue;
-      }
-      if (type == 0) {
-        cactus(c, at, .7 + variation * .6);
-      } else if (type == 1) {
-        rock(c, at, 35 + variation * 28);
-      } else if (type == 2) {
-        oval(c, at + const Offset(2, 4), 40, 16, const Color(0x227c6139));
-        for (var j = 0; j < 5; j++) {
-          oval(
-            c,
-            at + Offset((j - 2) * 7.0, -(j % 2) * 8.0),
-            20,
-            22,
-            const Color(0xff9ba765),
-          );
-        }
-      } else if (type == 3) {
-        oval(c, at, 10, 5, const Color(0xffc19b62));
-      } else {
-        rock(c, at, 15);
-      }
-    }
+    c.drawPicture(_decorPicture());
     for (final site in game.sites.take(1)) {
       if (!visible.contains(site.position)) continue;
       goldSite(c, site);
