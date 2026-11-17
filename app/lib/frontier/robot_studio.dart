@@ -1,6 +1,7 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'robot_3d.dart';
+import 'package:flutter/scheduler.dart';
+import 'dart:math' as math;
+import 'spider_rig.dart';
 
 class RobotStudio extends StatefulWidget {
   const RobotStudio({super.key});
@@ -8,34 +9,35 @@ class RobotStudio extends StatefulWidget {
   State<RobotStudio> createState() => _RobotStudioState();
 }
 
-class _RobotStudioState extends State<RobotStudio> {
-  late final Timer timer;
-  final clock = Stopwatch()..start();
+class _RobotStudioState extends State<RobotStudio>
+    with SingleTickerProviderStateMixin {
+  late final Ticker ticker;
+  final frames = ValueNotifier<double>(0);
   String clip = 'Mine';
-  double yaw = 0;
+  double zoom = 1, gestureZoom = 1;
   bool playing = true;
-  double time = 0, last = 0;
+  double time = 0;
+  Duration last = Duration.zero;
   @override
   void initState() {
     super.initState();
-    RobotModel.load().then((_) {
+    SpiderRig.load().then((_) {
       if (mounted) setState(() {});
     });
-    timer = Timer.periodic(const Duration(milliseconds: 33), (_) {
-      final now = clock.elapsedMicroseconds / 1e6;
-      if (mounted) {
-        setState(() {
-          if (playing) time += now - last;
-          last = now;
-        });
+    ticker = createTicker((elapsed) {
+      final dt = (elapsed - last).inMicroseconds / 1e6;
+      last = elapsed;
+      if (playing) {
+        time += dt.clamp(0, .1);
+        frames.value = time;
       }
-    });
+    })..start();
   }
 
   @override
   void dispose() {
-    timer.cancel();
-    clock.stop();
+    ticker.dispose();
+    frames.dispose();
     super.dispose();
   }
 
@@ -43,7 +45,7 @@ class _RobotStudioState extends State<RobotStudio> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: const Color(0xffe7d4ae),
     appBar: AppBar(
-      title: const Text('철마 · 3D 동작'),
+      title: const Text('거미 기지 · 채굴 동작'),
       backgroundColor: const Color(0xffe7d4ae),
       actions: [
         IconButton(
@@ -58,15 +60,20 @@ class _RobotStudioState extends State<RobotStudio> {
         children: [
           Expanded(
             child: GestureDetector(
-              onPanUpdate: (d) => setState(() => yaw += d.delta.dx * .012),
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: _RobotStudioPainter(clip, time, yaw),
+              onScaleStart: (_) => gestureZoom = zoom,
+              onScaleUpdate: (d) => setState(
+                () => zoom = (gestureZoom * d.scale).clamp(.65, 2.5),
+              ),
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: _RobotStudioPainter(clip, () => time, zoom, frames),
+                ),
               ),
             ),
           ),
           const Text(
-            '좌우로 드래그하면 모델을 돌려 볼 수 있습니다',
+            '두 손가락으로 확대해서 기계의 디테일과 채굴 동작을 살펴보세요',
             style: TextStyle(fontSize: 11, color: Color(0xff705a3d)),
           ),
           Padding(
@@ -76,13 +83,13 @@ class _RobotStudioState extends State<RobotStudio> {
               children: [
                 for (final mode in [
                   ('Idle', '대기'),
-                  ('Walk', '거미 보행'),
-                  ('Mine', '드릴 · 굴착'),
+                  ('Mine', '드릴 · 굴삭기 · 컨베이어'),
                 ])
                   FilledButton.tonal(
                     onPressed: () => setState(() {
                       clip = mode.$1;
                       time = 0;
+                      frames.value = 0;
                     }),
                     child: Text(mode.$2),
                   ),
@@ -96,23 +103,34 @@ class _RobotStudioState extends State<RobotStudio> {
 }
 
 class _RobotStudioPainter extends CustomPainter {
-  _RobotStudioPainter(this.clip, this.time, this.yaw);
+  _RobotStudioPainter(
+    this.clip,
+    this.timeProvider,
+    this.zoom,
+    Listenable repaint,
+  ) : super(repaint: repaint);
   final String clip;
-  final double time, yaw;
+  final double Function() timeProvider;
+  final double zoom;
+  double get time => timeProvider();
   @override
   void paint(Canvas c, Size size) {
-    final model = RobotModel.cached;
-    if (model == null) return;
-    final scale = (size.width / 360).clamp(.5, 2.3);
-    final at = Offset(size.width * .5, size.height * .65);
-    final p = Paint()
-      ..color = const Color(0x4453442b)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-    c.drawOval(
-      Rect.fromCenter(center: at, width: 250 * scale, height: 95 * scale),
-      p,
-    );
-    model.paint(c, at, clip: clip, poseTime: time, yaw: yaw, modelScale: scale);
+    final rig = SpiderRig.cached;
+    if (rig == null) return;
+    final scale =
+        math.min(
+          size.width / SpiderRig.size.width,
+          size.height / SpiderRig.size.height,
+        ) *
+        .96 *
+        zoom;
+    final at =
+        size.center(Offset.zero) +
+        (SpiderRig.contact - SpiderRig.size.center(Offset.zero)) * scale;
+    c.save();
+    c.clipRect(Offset.zero & size);
+    rig.paint(c, at, clip: clip, seconds: time, scale: scale);
+    c.restore();
   }
 
   @override

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'simulation.dart';
 import 'defense.dart';
+import 'spider_rig.dart';
 
 const sand = Color(0xffe8c88c);
 const ink = Color(0xff513d30);
@@ -14,12 +15,23 @@ class FrontierPainter extends CustomPainter {
   // 8 directions (rows) x 8 frames (columns), loaded once in FrontierScreen.
   static ui.Image? testMinerSprite;
 
-  void testMiner(Canvas canvas, Offset at, {double width = 48, double height = 60}) {
+  void testMiner(
+    Canvas canvas,
+    Offset at, {
+    double width = 48,
+    double height = 60,
+  }) {
     final image = testMinerSprite;
     if (image == null) {
       final fallbackPaint = Paint()..color = const Color(0xffc3944e);
-      canvas.drawOval(Rect.fromCenter(center: at + Offset(0, -height / 2),
-          width: width * .7, height: height * .85), fallbackPaint);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: at + Offset(0, -height / 2),
+          width: width * .7,
+          height: height * .85,
+        ),
+        fallbackPaint,
+      );
       return;
     }
     final cellW = image.width / 8.0;
@@ -33,10 +45,21 @@ class FrontierPainter extends CustomPainter {
       Paint()..filterQuality = FilterQuality.low,
     );
   }
-  FrontierPainter(this.game, this.camera, this.zoom);
+
+  FrontierPainter(
+    this.game,
+    Offset camera,
+    this.zoom, {
+    super.repaint,
+    this.cameraProvider,
+    this.terrainImage,
+  }) : _camera = camera;
   final FrontierGame game;
-  final Offset camera;
+  final Offset _camera;
+  final Offset Function()? cameraProvider;
+  Offset get camera => cameraProvider?.call() ?? _camera;
   final double zoom;
+  final ui.Image? terrainImage;
   final p = Paint()..isAntiAlias = true;
   void oval(Canvas c, Offset at, double w, double h, Color color) {
     p
@@ -114,6 +137,10 @@ class FrontierPainter extends CustomPainter {
     p.style = PaintingStyle.fill;
   }
 
+  // Keep native paragraph layout out of the frame loop. Bound the cache because
+  // counters and cooldown labels change throughout a game.
+  static final _textLayouts = <(String, double, Color), TextPainter>{};
+
   void text(
     Canvas c,
     String value,
@@ -121,18 +148,26 @@ class FrontierPainter extends CustomPainter {
     double size = 13,
     Color color = ink,
   }) {
-    final t = TextPainter(
-      text: TextSpan(
-        text: value,
-        style: TextStyle(
-          fontSize: size,
-          color: color,
-          fontWeight: FontWeight.w800,
-          shadows: const [Shadow(color: Color(0x88fff2cf), blurRadius: 3)],
+    final key = (value, size, color);
+    var t = _textLayouts[key];
+    if (t == null) {
+      if (_textLayouts.length >= 256) {
+        _textLayouts.remove(_textLayouts.keys.first)!.dispose();
+      }
+      t = TextPainter(
+        text: TextSpan(
+          text: value,
+          style: TextStyle(
+            fontSize: size,
+            color: color,
+            fontWeight: FontWeight.w800,
+            shadows: const [Shadow(color: Color(0x88fff2cf), blurRadius: 3)],
+          ),
         ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
+        textDirection: TextDirection.ltr,
+      )..layout();
+      _textLayouts[key] = t;
+    }
     t.paint(c, at - Offset(t.width / 2, 0));
   }
 
@@ -239,18 +274,24 @@ class FrontierPainter extends CustomPainter {
     }
   }
 
-  @override
-  void paint(Canvas c, Size size) {
-    c.drawColor(const Color(0xffc99c64), BlendMode.src);
-    c.save();
-    c.scale(zoom);
-    c.translate(-camera.dx, -camera.dy);
-    final visible = Rect.fromLTWH(
-      camera.dx - 220,
-      camera.dy - 220,
-      size.width / zoom + 440,
-      size.height / zoom + 440,
-    );
+  // Flatten static gradients and decoration once. Replaying vector pictures
+  // alone still rasterizes hundreds of gradients whenever the camera moves.
+  static Future<ui.Image> rasterizeTerrain(FrontierGame game) async {
+    final painter = FrontierPainter(game, Offset.zero, 1);
+    final recorder = ui.PictureRecorder();
+    painter.paintTerrain(Canvas(recorder));
+    final picture = recorder.endRecording();
+    try {
+      return await picture.toImage(
+        FrontierGame.world.width.toInt(),
+        FrontierGame.world.height.toInt(),
+      );
+    } finally {
+      picture.dispose();
+    }
+  }
+
+  void paintTerrain(Canvas c) {
     box(c, Offset.zero & FrontierGame.world, sand, 0);
     c.drawPicture(_sandPicture());
     for (final route in DefenseWorld.paths) {
@@ -285,7 +326,6 @@ class FrontierPainter extends CustomPainter {
     // A disused railway cuts across the frontier.
     for (var x = 100.0; x < 3500; x += 25) {
       final y = 2100 - x * .13;
-      if (!visible.inflate(100).contains(Offset(x, y))) continue;
       line(
         c,
         Offset(x, y - 14),
@@ -309,6 +349,30 @@ class FrontierPainter extends CustomPainter {
       3,
     );
     c.drawPicture(_decorPicture());
+  }
+
+  @override
+  void paint(Canvas c, Size size) {
+    c.drawColor(const Color(0xffc99c64), BlendMode.src);
+    c.save();
+    c.scale(zoom);
+    c.translate(-camera.dx, -camera.dy);
+    final visible = Rect.fromLTWH(
+      camera.dx - 220,
+      camera.dy - 220,
+      size.width / zoom + 440,
+      size.height / zoom + 440,
+    );
+    final terrain = terrainImage;
+    if (terrain != null) {
+      c.drawImage(
+        terrain,
+        Offset.zero,
+        Paint()..filterQuality = FilterQuality.low,
+      );
+    } else {
+      paintTerrain(c);
+    }
     for (final site in game.sites.take(1)) {
       if (!visible.contains(site.position)) continue;
       goldSite(c, site);
@@ -352,17 +416,20 @@ class FrontierPainter extends CustomPainter {
       p.style = PaintingStyle.fill;
     }
     final actors = <({double y, VoidCallback draw})>[
-      (y: game.robot.dy, draw: () => machine(c)),
+      if (visible.inflate(150).contains(game.robot))
+        (y: game.robot.dy, draw: () => machine(c)),
       for (final unit in game.crew)
-        (
-          y: unit.position.dy,
-          draw: () => cowboy(c, unit.position, false, unit.hp),
-        ),
+        if (visible.contains(unit.position))
+          (
+            y: unit.position.dy,
+            draw: () => cowboy(c, unit.position, false, unit.hp),
+          ),
       for (final unit in game.raiders)
-        (
-          y: unit.position.dy,
-          draw: () => cowboy(c, unit.position, true, unit.hp),
-        ),
+        if (visible.contains(unit.position))
+          (
+            y: unit.position.dy,
+            draw: () => cowboy(c, unit.position, true, unit.hp),
+          ),
       for (final site in game.defense.veins)
         if (site.bot != null && visible.contains(site.bot!.position))
           (y: site.bot!.position.dy, draw: () => defenseBot(c, site)),
@@ -380,7 +447,8 @@ class FrontierPainter extends CustomPainter {
             y: game.defense.companionPosition(unit).dy,
             draw: () => companion(c, unit),
           ),
-      if (game.defense.hero.alive)
+      if (game.defense.hero.alive &&
+          visible.contains(game.defense.hero.position))
         (y: game.defense.hero.position.dy, draw: () => playerHero(c)),
     ]..sort((a, b) => a.y.compareTo(b.y));
     for (final actor in actors) {
@@ -774,8 +842,12 @@ class FrontierPainter extends CustomPainter {
     if (hp < 100) {
       final top = at + const Offset(0, -65);
       box(c, Rect.fromCenter(center: top, width: 42, height: 4), ink, 2);
-      box(c, Rect.fromLTWH(top.dx - 20, top.dy - 1, 40 * (hp / 100).clamp(0, 1), 2),
-          hostile ? const Color(0xffd66e4a) : const Color(0xffd4bf83), 1);
+      box(
+        c,
+        Rect.fromLTWH(top.dx - 20, top.dy - 1, 40 * (hp / 100).clamp(0, 1), 2),
+        hostile ? const Color(0xffd66e4a) : const Color(0xffd4bf83),
+        1,
+      );
     }
   }
 
@@ -785,11 +857,23 @@ class FrontierPainter extends CustomPainter {
     testMiner(c, at, width: 74, height: 90);
     final top = at + const Offset(0, -95);
     box(c, Rect.fromCenter(center: top, width: 64, height: 4), ink, 2);
-    box(c, Rect.fromLTWH(top.dx - 31, top.dy - 1,
-        62 * (bot.hp / bot.maxHp).clamp(0, 1), 2),
-        const Color(0xffe4c271), 1);
-    text(c, '${DefenseWorld.laneNames[site.lane]} Lv.${bot.level}',
-        top + const Offset(0, -15), size: 10);
+    box(
+      c,
+      Rect.fromLTWH(
+        top.dx - 31,
+        top.dy - 1,
+        62 * (bot.hp / bot.maxHp).clamp(0, 1),
+        2,
+      ),
+      const Color(0xffe4c271),
+      1,
+    );
+    text(
+      c,
+      '${DefenseWorld.laneNames[site.lane]} Lv.${bot.level}',
+      top + const Offset(0, -15),
+      size: 10,
+    );
   }
 
   void rescueCamp(Canvas c, RescueCamp camp) {
@@ -1030,16 +1114,37 @@ class FrontierPainter extends CustomPainter {
 
   void machine(Canvas c) {
     final at = game.robot + FrontierGame.drillContact;
-    // Large miner placeholder instead of per-frame 3D geometry rendering.
-    testMiner(c, at, width: 150, height: 190);
+    final clip = game.moving
+        ? 'Walk'
+        : game.mining
+        ? 'Mine'
+        : 'Idle';
+    final time = game.moving ? game.robotWalkTime : game.robotMineTime;
+    final rig = SpiderRig.cached;
+    if (rig != null) {
+      rig.paint(c, at, clip: clip, seconds: time, scale: .20);
+    } else {
+      testMiner(c, at, width: 150, height: 190);
+    }
     final bar = at + const Offset(0, -204);
-    box(c, Rect.fromCenter(center: bar, width: 100, height: 6),
-        const Color(0xff5b4939), 3);
-    box(c, Rect.fromLTWH(bar.dx - 48, bar.dy - 1,
-        96 * (game.hull / 1200).clamp(0, 1), 2),
-        const Color(0xffd4bf83), 1);
-    text(c, '철마 01 (테스트 스프라이트)',
-        bar + const Offset(0, -20), size: 12);
+    box(
+      c,
+      Rect.fromCenter(center: bar, width: 100, height: 6),
+      const Color(0xff5b4939),
+      3,
+    );
+    box(
+      c,
+      Rect.fromLTWH(
+        bar.dx - 48,
+        bar.dy - 1,
+        96 * (game.hull / 1200).clamp(0, 1),
+        2,
+      ),
+      const Color(0xffd4bf83),
+      1,
+    );
+    text(c, '철마 01 (테스트 스프라이트)', bar + const Offset(0, -20), size: 12);
   }
 
   @override
@@ -1047,9 +1152,17 @@ class FrontierPainter extends CustomPainter {
 }
 
 class FrontierMiniMap extends CustomPainter {
-  FrontierMiniMap(this.game, this.camera, this.viewport);
+  FrontierMiniMap(
+    this.game,
+    Offset camera,
+    this.viewport, {
+    super.repaint,
+    this.cameraProvider,
+  }) : _camera = camera;
   final FrontierGame game;
-  final Offset camera;
+  final Offset _camera;
+  final Offset Function()? cameraProvider;
+  Offset get camera => cameraProvider?.call() ?? _camera;
   final Size viewport;
   @override
   void paint(Canvas c, Size size) {

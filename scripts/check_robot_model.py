@@ -48,3 +48,28 @@ for part in ['Excavator elbow','Bucket articulation','Conveyor ore 0','Drill rot
     key=str(names[part])
     assert len({json.dumps(f[key],sort_keys=True) for f in mine})>10,f'{part} is not animated'
 print(f'PASS: standard GLB, {len(scene["nodes"])} nodes, three clips, eight legs, planted stance, moving drill/bucket/conveyor')
+# The bucket must reach both the excavation and the actual conveyor intake.
+cycle=scene['clips']['Mine'];poses=cycle['poses'];times=cycle['times']
+def at(part,time):
+    frame=min(range(len(times)),key=lambda i:abs(times[i]-time))
+    return poses[frame][str(names[part])]
+bucket_key='Bucket articulation'
+assert at(bucket_key,.8)['translation'][1] < .3, 'Bucket must reach the ground'
+assert at(bucket_key,2.5)['translation'][1] > 2, 'Loaded bucket must lift before swinging'
+dump=at(bucket_key,4.1)
+assert abs(dump['translation'][0]+1)<.01 and dump['translation'][2]>2.5, 'Dump must align with belt intake'
+assert dump['rotation'] != at(bucket_key,3.3)['rotation'], 'Bucket must tip to release ore'
+assert at('Bucket carried ore 0',2.5)['scale'][0]>.9
+assert at('Bucket carried ore 0',4.6)['scale'][0]<.01
+assert at('Falling ore 0',3.8)['scale'][0]>.5
+for i in range(8):
+    key=str(names[f'Leg {i} foot'])
+    assert all(f[key]['translation']==poses[0][key]['translation'] for f in poses), 'Mining feet must stay braced'
+for part in ['Bucket articulation','Excavator elbow','Body','Steam puff 0']:
+    key=str(names[part])
+    for prop in poses[0][key]:
+        assert all(abs(a-b)<1e-6 for a,b in zip(poses[0][key][prop],poses[-1][key][prop])), f'{part} loop jumps'
+for part in ['Belt cleat 0','Conveyor roller 0','Drill debris 0']:
+    key=str(names[part])
+    assert len({json.dumps(f[key],sort_keys=True) for f in poses})>10, f'{part} must move'
+print('PASS: ground scoop, lift, belt-aligned dump, carried/falling ore, planted mining feet, seamless working rig')

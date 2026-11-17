@@ -275,7 +275,7 @@ class RobotModel {
       [1, 1, 1],
     ).matrix();
     // The scene's bit tip remains at the actual game's drilling contact point.
-    final tip = yawMatrix.point(const _V(0, .16, 1.35));
+    final tip = yawMatrix.point(const _V(0, .16, 2.0));
     final origin = contact - project(tip.x, tip.y, tip.z) * modelScale;
     final triangles = <_Triangle>[];
     var bounds = Rect.fromLTWH(contact.dx, contact.dy, 0, 0);

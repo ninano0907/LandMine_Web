@@ -13,7 +13,8 @@ OUT = ROOT / 'app/assets/models'
 TAU = math.tau
 meshes, nodes, clips = [], [], {}
 BRASS, IRON, COPPER, WOOD = '#c79d5c', '#725b49', '#b77b4b', '#8a5c3d'
-STEEL, GLASS, LIGHT = '#80847b', '#b4bdab', '#ffc263'
+STEEL, GLASS, LIGHT = '#9da99e', '#b4bdab', '#ffc263'
+TEAL = '#377b78'
 
 def add(a,b): return [a[i]+b[i] for i in range(3)]
 def sub(a,b): return [a[i]-b[i] for i in range(3)]
@@ -76,7 +77,7 @@ lower=lathe('Brass limb',[(.001,-.5),(.17,-.5),(.21,-.35),(.19,.35),(.14,.5),(.0
 joint=ellipsoid('Joint',(.24,.24,.24),BRASS)
 footmesh=lathe('Ground pad',[(.001,0),(.38,0),(.45,.08),(.39,.23),(.29,.3),(.001,.3)],IRON,10)
 bolt=ellipsoid('Rivet',(.07,.07,.07),BRASS)
-hull=ellipsoid('Riveted boiler hull',(1.55,1.0,1.55),IRON)
+hull=ellipsoid('Riveted boiler hull',(1.55,1.0,1.55),TEAL)
 node('Boiler hull',hull,p=(0,2.45,0),s=(1,1,1.15),parent=body)
 # Brass belts wrapped around the sculpted hull.
 for z in [-.95,.95]:
@@ -94,7 +95,7 @@ for x in [-.45,-.15,.15,.45]:
 # Wood carriage with ribs, roof, door, porch, windows and lamps.
 woodbox=cube('Wood panel',WOOD);darkbox=cube('Dark iron panel',IRON);trimbox=cube('Brass trim',BRASS)
 node('Recruitment carriage',woodbox,p=(0,2.25,-2.0),s=(2.25,1.9,1.45),parent=body)
-roof=lathe('Curved carriage roof',[(.001,-.68),(1.24,-.68),(1.35,-.5),(1.35,.5),(1.24,.68),(.001,.68)],IRON,16)
+roof=lathe('Curved carriage roof',[(.001,-.68),(1.24,-.68),(1.35,-.5),(1.35,.5),(1.24,.68),(.001,.68)],TEAL,16)
 node('Carriage roof',roof,p=(0,3.27,-2.0),q=quat([1,0,0],math.pi/2),s=(1,1,.29),parent=body)
 for side in [-1,1]:
     for z in [-2.65,-2.0,-1.35]:
@@ -128,7 +129,7 @@ for i in range(8):
     legs.append((side,j,hip,ids))
 # Rotating helical drill: the bit is a true mesh with two flutes.
 shaft=lathe('Drill cone',[(.01,0),(.12,.08),(.34,.8),(.48,1.35),(.48,1.46),(.01,1.46)],STEEL,18)
-drill=node('Drill rotation',p=(0,.16,1.35),parent=root)
+drill=node('Drill rotation',p=(0,.16,2.0),parent=root)
 node('Drill core',shaft,parent=drill)
 for turn in [0,math.pi]:
     pos,nor,ind=[],[],[]
@@ -139,7 +140,7 @@ for turn in [0,math.pi]:
         if i<80:
             k=i*2;ind.extend([k,k+1,k+2,k+1,k+3,k+2,k+2,k+1,k,k+2,k+3,k+1])
     node('Spiral flight',mesh('Spiral flight',pos,nor,ind,BRASS),parent=drill)
-node('Drill motor',lathe('Drill motor',[(.01,0),(.5,0),(.55,.15),(.55,.65),(.42,.8),(.01,.8)],IRON,14),p=(0,1.45,1.35),parent=body)
+node('Drill motor',lathe('Drill motor',[(.01,0),(.5,0),(.55,.15),(.55,.65),(.42,.8),(.01,.8)],IRON,14),p=(0,1.45,2.0),parent=body)
 # Articulated excavator mounted on the left. Bucket has open jaw and teeth.
 arm_upper=node('Excavator boom',upper,parent=root)
 arm_lower=node('Excavator stick',lower,parent=root)
@@ -150,15 +151,51 @@ node('Bucket scoop',darkbox,p=(0,-.22,.3),s=(.85,.1,.7),parent=bucket)
 for side in [-1,1]:node('Bucket cheek',trimbox,p=(side*.43,-.03,.29),s=(.06,.45,.7),parent=bucket)
 for x in [-.33,-.11,.11,.33]:node('Bucket tooth',trimbox,p=(x,-.24,.74),s=(.1,.08,.3),parent=bucket)
 # Sloped conveyor attached to the boiler face.
-for x in [-.46,.46]:node('Conveyor rail',trimbox,p=(x,1.7,2.0),s=(.08,.1,1.8),q=quat([1,0,0],.46),parent=body)
-node('Conveyor belt',darkbox,p=(0,1.68,2.0),s=(.82,.08,1.8),q=quat([1,0,0],.46),parent=body)
+for x in [-.46,.46]:node('Conveyor rail',trimbox,p=(x-1,1.7,2.0),s=(.08,.1,1.8),q=quat([1,0,0],.46),parent=body)
+node('Conveyor belt',darkbox,p=(-1,1.68,2.0),s=(.82,.08,1.8),q=quat([1,0,0],.46),parent=body)
 rollers=[]
 roller_mesh=lathe('Conveyor roller',[(.001,-.45),(.1,-.45),(.1,.45),(.001,.45)],STEEL,8)
 for i in range(6):
     z=1.25+i*.29;y=2.04-i*.14
-    rollers.append(node('Conveyor roller %d'%i,roller_mesh,p=(0,y,z),q=quat([0,0,1],math.pi/2),parent=root))
+    rollers.append(node('Conveyor roller %d'%i,roller_mesh,p=(-1,y,z),q=quat([0,0,1],math.pi/2),parent=root))
 goldmesh=ellipsoid('Gold ore',(.13,.11,.13),'#e8b748')
-gold=[node('Conveyor ore %d'%i,goldmesh,parent=root) for i in range(4)]
+gold=[node('Conveyor ore %d'%i,goldmesh,parent=root) for i in range(8)]
+cleat_mesh=cube('Belt cleat',STEEL)
+cleats=[node('Belt cleat %d'%i,cleat_mesh,parent=root) for i in range(18)]
+bucket_ore=[node('Bucket carried ore %d'%i,goldmesh,p=((i%3-1)*.2,-.06,.18+(i//3)*.2),parent=bucket) for i in range(6)]
+pouring=[node('Falling ore %d'%i,goldmesh,parent=root) for i in range(8)]
+chipmesh=ellipsoid('Rock chip',(.06,.05,.07),'#b28755')
+chips=[node('Drill debris %d'%i,chipmesh,parent=root) for i in range(12)]
+steammesh=ellipsoid('Steam',(.2,.18,.2),'#e5e0ce')
+steam=[node('Steam puff %d'%i,steammesh,parent=root) for i in range(7)]
+# Working hydraulic cylinders follow the boom instead of floating in place.
+ram_barrel=node('Excavator hydraulic barrel',upper,parent=root)
+ram_rod=node('Excavator hydraulic rod',metal_rod,parent=root)
+
+MINING_DURATION=6.0
+# Dig down, curl under the ore, lift, swing over the belt, dump, return.
+BUCKET_KEYS=[
+    (0.0, [3.55,.36,1.5], .12),
+    (.8, [3.4,.24,1.7], .18),
+    (1.6, [2.95,.55,1.9], -.85),
+    (2.5, [2.75,2.1,1.6], -.95),
+    (3.3, [-1.0,2.15,2.7], -.75),
+    (4.1, [-1.0,2.15,2.7], 1.1),
+    (4.6, [-1.0,2.15,2.7], 1.1),
+    (5.3, [2.85,2.0,1.6], -.5),
+    (6.0, [3.55,.36,1.5], .12),
+]
+def bucket_cycle(t):
+    t=t%MINING_DURATION
+    for (ta,a,ca),(tb,b,cb) in zip(BUCKET_KEYS,BUCKET_KEYS[1:]):
+        if ta<=t<=tb:
+            u=(t-ta)/(tb-ta);u=u*u*(3-2*u)
+            return [a[i]+(b[i]-a[i])*u for i in range(3)],ca+(cb-ca)*u
+    raise AssertionError(t)
+
+def qmul(a,b):
+    x,y,z,w=a;X,Y,Z,W=b
+    return [w*X+x*W+y*Z-z*Y,w*Y-x*Z+y*W+z*X,w*Z+x*Y-y*X+z*W,w*W-x*X-y*Y-z*Z]
 
 # A bone represented by an oriented, scaled rigid mesh.
 def bone_pose(a,b):return dict(translation=mul(add(a,b),.5),rotation=align_y(sub(b,a)),scale=[1,math.sqrt(dot(sub(b,a),sub(b,a))),1])
@@ -181,26 +218,63 @@ def pose(mode,t):
         foot=[side*(3.5+.12*abs(j-1.5)),lift,zshift+hip[2]*1.65] if walking else [side*(3.5+.12*abs(j-1.5)),0,hip[2]*1.65]
         h=add(hip,[0,bob,0]);knee=solve_knee(h,foot,2.05,2.25)
         result[ids[0]]=bone_pose(h,knee);result[ids[1]]=bone_pose(knee,add(foot,[0,.2,0]));result[ids[2]]={'translation':knee};result[ids[3]]={'translation':foot}
-    result[drill]={'translation':[0,1.0 if walking else .16,1.35],'rotation':quat([0,1,0],t*TAU*6 if mining else 0)}
-    phase=t%1
-    if mining:
-        bucket_at=[3.85+.35*math.sin(phase*TAU),.65+1.0*(1-math.cos(phase*TAU)),1.05+.3*math.sin(phase*TAU)]
-        curl=-.6+math.sin(phase*TAU)*.65
+    # Feed is small: the machine braces while the bit bites into the ground.
+    feed=.025*math.sin(t*TAU*2) if mining else 0
+    result[drill]={'translation':[0,1.0 if walking else .16+feed,2.0],
+                   'rotation':quat([0,1,0],t*TAU*3 if mining else 0)}
+    if mining:bucket_at,curl=bucket_cycle(t)
     else:bucket_at=[3.3,1.9,.9];curl=-.7
     shoulder=[1.1,3.0+bob,.8];elbow=solve_knee(shoulder,bucket_at,2.1,2.2)
-    result[arm_upper]=bone_pose(shoulder,elbow);result[arm_lower]=bone_pose(elbow,bucket_at);result[arm_knee]={'translation':elbow};result[bucket]={'translation':bucket_at,'rotation':quat([1,0,0],curl)}
+    result[arm_upper]=bone_pose(shoulder,elbow)
+    result[arm_lower]=bone_pose(elbow,bucket_at)
+    result[arm_knee]={'translation':elbow}
+    result[bucket]={'translation':bucket_at,'rotation':quat([1,0,0],curl)}
+    ram_start=add(shoulder,[.22,-.2,0]);ram_end=add(elbow,[.22,-.08,0])
+    midpoint=add(ram_start,mul(sub(ram_end,ram_start),.65))
+    result[ram_barrel]=bone_pose(ram_start,midpoint)
+    result[ram_barrel]['scale'][0]=result[ram_barrel]['scale'][2]=.48
+    result[ram_rod]=bone_pose(midpoint,ram_end)
+    cycle=t%MINING_DURATION
+    loaded=min(1,max(0,(cycle-1.0)/.45))*min(1,max(0,(4.05-cycle)/.55)) if mining else 0
+    for i,key in enumerate(bucket_ore):
+        result[key]={'scale':[max(.001,loaded)]*3}
+    for i,key in enumerate(pouring):
+        # Staggered ballistic arcs exist only during the dump window.
+        u=(cycle-3.55-i*.055)/.55
+        visible=min(1,max(0,u*20))*min(1,max(0,(1-u)*20)) if mining else 0
+        u=min(1,max(0,u))
+        result[key]={'translation':[-1.0+(i%3-1)*.09,1.95-.75*u*u,2.98-.24*u],
+                     'scale':[max(.001,visible)]*3}
     for i,key in enumerate(gold):
-        progress=(t*1.5+i/4)%1
-        result[key]={'translation':[.12*math.sin(i),1.35+progress*.7,2.7-progress*1.45],'scale':[1,1,1] if mining else [.001,.001,.001]}
+        progress=(t*.5+i/8)%1
+        result[key]={'translation':[-1+.17*math.sin(i*2),1.46+progress*.7,2.7-progress*1.45],
+                     'scale':[1,1,1] if mining else [.001]*3}
+    for i,key in enumerate(cleats):
+        progress=(t*.5+i/18)%1 if mining else i/18
+        result[key]={'translation':[-1,1.38+progress*.7,2.7-progress*1.45],
+                     'rotation':quat([1,0,0],.46),'scale':[.8,.045,.055]}
+    for key in rollers:
+        result[key]={'rotation':qmul(quat([0,0,1],math.pi/2),quat([0,1,0],-t*TAU*2 if mining else 0))}
+    for i,key in enumerate(chips):
+        life=(t*2+i/12)%1;angle=i*2.399
+        radius=.25+life*.9
+        result[key]={'translation':[math.cos(angle)*radius,.12+math.sin(life*math.pi)*.38,2.0+math.sin(angle)*radius],
+                     'rotation':quat([1,.3,0],life*TAU),
+                     'scale':[max(.001,1-life) if mining else .001]*3}
+    for i,key in enumerate(steam):
+        life=(t*(1 if walking else .5)+i/7)%1
+        size=math.sin(math.pi*life)*(.7+life*1.2)
+        result[key]={'translation':[-.6+life*.6,4.82+life*1.55,-.2+life*.2],
+                     'scale':[max(.001,size)]*3}
     return {str(k):v for k,v in result.items()}
 
 # Clips are baked for portable viewers and sampled identically by Flutter.
-for mode,duration,frames in [('Idle',4,49),('Walk',1,49),('Mine',4,193)]:
+for mode,duration,frames in [('Idle',4,49),('Walk',1,49),('Mine',MINING_DURATION,289)]:
     times=[i*duration/(frames-1) for i in range(frames)]
     clips[mode]={'duration':duration,'times':times,'poses':[pose(mode,t) for t in times]}
 base=pose('Idle',0)
 for key,values in base.items():nodes[int(key)].update(values)
-scene={'format':'frontier-rigid-mesh-1','meshes':meshes,'nodes':nodes,'root':root,'clips':clips,'metadata':{'palette':'dark brown iron, copper and brass','legs':8,'stanceDuty':.68,'stride':2.5,'forwardSpeed':2.5/.68,'drillContact':[0,.16,1.35]}}
+scene={'format':'frontier-rigid-mesh-1','meshes':meshes,'nodes':nodes,'root':root,'clips':clips,'metadata':{'palette':'weathered teal, dark iron, copper and brass','miningCycleSeconds':MINING_DURATION,'miningStages':['dig','curl','lift','swing','dump','return'],'legs':8,'stanceDuty':.68,'stride':2.5,'forwardSpeed':2.5/.68,'drillContact':[0,.16,2.0]}}
 OUT.mkdir(parents=True,exist_ok=True)
 (OUT/'frontier_robot.scene.json').write_text(json.dumps(scene,separators=(',',':')))
 

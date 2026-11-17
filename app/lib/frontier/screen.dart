@@ -1,11 +1,12 @@
-import 'dart:async';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 import 'defense.dart';
 import 'painter.dart';
 import 'robot_studio.dart';
+import 'spider_rig.dart';
 import 'simulation.dart';
 
 class FrontierScreen extends StatefulWidget {
@@ -16,13 +17,17 @@ class FrontierScreen extends StatefulWidget {
 }
 
 class _FrontierScreenState extends State<FrontierScreen>
-    with WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late FrontierGame game;
-  late final Timer timer;
-  final watch = Stopwatch()..start();
+  late final Ticker ticker;
+  Duration previousFrame = Duration.zero;
+  Duration lastHudFrame = Duration.zero;
+  final mapFrames = ValueNotifier<int>(0);
+  ui.Image? terrainImage;
+  int terrainGeneration = 0;
   final keys = <LogicalKeyboardKey>{};
   final focus = FocusNode();
-  double lastTime = 0, zoom = 1;
+  double zoom = 1;
   Offset camera = Offset.zero;
   Size viewport = Size.zero;
   String follow = 'hero';
@@ -32,38 +37,83 @@ class _FrontierScreenState extends State<FrontierScreen>
     super.initState();
     game = widget.initialGame ?? FrontierGame();
     WidgetsBinding.instance.addObserver(this);
+    loadTerrain();
+    SpiderRig.load()
+        .then((_) {
+          if (mounted) setState(() {});
+        })
+        .catchError((Object error) {
+          debugPrint('Spider artwork: $error');
+        });
     // Load the same 8x8 walk atlas once for all temporary RTS actors.
-    rootBundle.load('assets/units/1900/engineer_walk_empty.png').then((data) async {
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      try {
-        final frame = await codec.getNextFrame();
-        if (!mounted) {
-          frame.image.dispose();
-          return;
+    rootBundle
+        .load('assets/units/1900/engineer_walk_empty.png')
+        .then((data) async {
+          final codec = await ui.instantiateImageCodec(
+            data.buffer.asUint8List(),
+          );
+          try {
+            final frame = await codec.getNextFrame();
+            if (!mounted) {
+              frame.image.dispose();
+              return;
+            }
+            FrontierPainter.testMinerSprite = frame.image;
+            setState(() {});
+          } finally {
+            codec.dispose();
+          }
+        })
+        .catchError((Object error) {
+          debugPrint('Test miner sprite load: $error');
+        });
+    ticker = createTicker((elapsed) {
+      final dt = (elapsed - previousFrame).inMicroseconds / 1000000;
+      previousFrame = elapsed;
+      if (dt <= 0) return;
+      final wasActive = active;
+      final wasAlive = game.defense.hero.alive;
+      game.tick(dt);
+      updateCamera();
+      if (wasActive || active) mapFrames.value++;
+      // HUD counters do not need display-rate widget builds. Transitions still
+      // update immediately so pause, death and victory controls stay responsive.
+      if (elapsed - lastHudFrame >= const Duration(milliseconds: 100) ||
+          wasActive != active ||
+          wasAlive != game.defense.hero.alive) {
+        lastHudFrame = elapsed;
+        if (wasActive || active || wasAlive != game.defense.hero.alive) {
+          setState(() {});
         }
-        FrontierPainter.testMinerSprite = frame.image;
-        setState(() {});
-      } finally {
-        codec.dispose();
       }
-    }).catchError((Object error) {
-      debugPrint('Test miner sprite load: $error');
-    });
-    timer = Timer.periodic(const Duration(milliseconds: 33), (_) {
-      final now = watch.elapsedMicroseconds / 1000000;
-      final dt = now - lastTime;
-      lastTime = now;
-      if (mounted) setState(() => game.tick(dt));
-    });
+    })..start();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    timer.cancel();
-    watch.stop();
+    ticker.dispose();
+    mapFrames.dispose();
+    terrainImage?.dispose();
     focus.dispose();
     super.dispose();
+  }
+
+  Future<void> loadTerrain() async {
+    final generation = ++terrainGeneration;
+    try {
+      final image = await FrontierPainter.rasterizeTerrain(game);
+      if (!mounted || generation != terrainGeneration) {
+        image.dispose();
+        return;
+      }
+      final oldImage = terrainImage;
+      setState(() => terrainImage = image);
+      // Keep the previous delegate's image alive until the replacement paints.
+      WidgetsBinding.instance.addPostFrameCallback((_) => oldImage?.dispose());
+    } catch (error) {
+      debugPrint('Terrain cache: $error');
+    }
   }
 
   void clearInputs() {
@@ -89,6 +139,21 @@ class _FrontierScreenState extends State<FrontierScreen>
   );
   void centerOn(Offset at) {
     camera = bound(at - Offset(viewport.width * .5, viewport.height * .53));
+  }
+
+  void updateCamera() {
+    if (follow == 'hero') {
+      centerOn(game.defense.hero.position);
+    } else if (follow == 'robot') {
+      centerOn(game.robot);
+    }
+    camera = bound(camera);
+  }
+
+  void panMap(Offset delta) {
+    follow = '';
+    camera = bound(camera - delta / zoom);
+    mapFrames.value++;
   }
 
   KeyEventResult keyEvent(FocusNode node, KeyEvent event) {
@@ -447,12 +512,7 @@ class _FrontierScreenState extends State<FrontierScreen>
                     constraints.maxWidth / zoom,
                     constraints.maxHeight / zoom,
                   );
-                  if (follow == 'hero') {
-                    centerOn(game.defense.hero.position);
-                  } else if (follow == 'robot') {
-                    centerOn(game.robot);
-                  }
-                  camera = bound(camera);
+                  updateCamera();
                   final hero = game.defense.hero;
                   final camp = game.defense.nearbyCamp;
                   return ClipRect(
@@ -463,12 +523,18 @@ class _FrontierScreenState extends State<FrontierScreen>
                             key: const ValueKey('frontier-map'),
                             behavior: HitTestBehavior.opaque,
                             onTapUp: (d) => mapTap(d.localPosition),
-                            onPanUpdate: (d) => setState(() {
-                              follow = '';
-                              camera = bound(camera - d.delta / zoom);
-                            }),
-                            child: CustomPaint(
-                              painter: FrontierPainter(game, camera, zoom),
+                            onPanUpdate: (d) => panMap(d.delta),
+                            child: RepaintBoundary(
+                              child: CustomPaint(
+                                painter: FrontierPainter(
+                                  game,
+                                  camera,
+                                  zoom,
+                                  repaint: mapFrames,
+                                  terrainImage: terrainImage,
+                                  cameraProvider: () => camera,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -549,11 +615,15 @@ class _FrontierScreenState extends State<FrontierScreen>
                                     ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: CustomPaint(
-                                    painter: FrontierMiniMap(
-                                      game,
-                                      camera,
-                                      viewport,
+                                  child: RepaintBoundary(
+                                    child: CustomPaint(
+                                      painter: FrontierMiniMap(
+                                        game,
+                                        camera,
+                                        viewport,
+                                        repaint: mapFrames,
+                                        cameraProvider: () => camera,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -709,6 +779,7 @@ class _FrontierScreenState extends State<FrontierScreen>
                                         onPressed: () => setState(() {
                                           clearInputs();
                                           game = FrontierGame();
+                                          loadTerrain();
                                           follow = 'hero';
                                         }),
                                         child: const Text('새 원정 시작'),
@@ -936,7 +1007,7 @@ class _FrontierScreenState extends State<FrontierScreen>
                     : null,
               ),
               const SizedBox(width: 6),
-              action('로봇 동작', '대기 / 보행 / 채굴', Icons.view_in_ar, () {
+              action('로봇 동작', '기지 / 채굴 동작', Icons.view_in_ar, () {
                 clearInputs();
                 setState(() => game.paused = true);
                 Navigator.push(
@@ -988,57 +1059,57 @@ class _MoveStickState extends State<_MoveStick> {
   @override
   Widget build(BuildContext context) => RepaintBoundary(
     child: Listener(
-    key: const ValueKey('hero-stick'),
-    behavior: HitTestBehavior.opaque,
-    onPointerDown: (e) {
-      if (widget.enabled && pointer == null) {
-        pointer = e.pointer;
-        update(e.localPosition);
-      }
-    },
-    onPointerMove: (e) {
-      if (widget.enabled && pointer == e.pointer) update(e.localPosition);
-    },
-    onPointerUp: (e) {
-      if (pointer == e.pointer) end();
-    },
-    onPointerCancel: (e) {
-      if (pointer == e.pointer) end();
-    },
-    child: SizedBox(
-      width: 88,
-      height: 88,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0x77836b4b),
-          border: Border.all(color: const Color(0x99fff0bd), width: 2),
-        ),
-        child: Center(
-          child: Transform.translate(
-            offset: value,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.enabled
-                    ? const Color(0xccf5d99b)
-                    : const Color(0x66b9ab8d),
-                border: Border.all(color: const Color(0xffb08d55)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x446c5134),
-                    blurRadius: 6,
-                    offset: Offset(0, 3),
-                  ),
-                ],
+      key: const ValueKey('hero-stick'),
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (e) {
+        if (widget.enabled && pointer == null) {
+          pointer = e.pointer;
+          update(e.localPosition);
+        }
+      },
+      onPointerMove: (e) {
+        if (widget.enabled && pointer == e.pointer) update(e.localPosition);
+      },
+      onPointerUp: (e) {
+        if (pointer == e.pointer) end();
+      },
+      onPointerCancel: (e) {
+        if (pointer == e.pointer) end();
+      },
+      child: SizedBox(
+        width: 88,
+        height: 88,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0x77836b4b),
+            border: Border.all(color: const Color(0x99fff0bd), width: 2),
+          ),
+          child: Center(
+            child: Transform.translate(
+              offset: value,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.enabled
+                      ? const Color(0xccf5d99b)
+                      : const Color(0x66b9ab8d),
+                  border: Border.all(color: const Color(0xffb08d55)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x446c5134),
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
     ),
   );
 }
