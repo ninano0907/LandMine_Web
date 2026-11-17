@@ -6,11 +6,14 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument('--namespace', default='landmine-web')
 parser.add_argument('--output', type=Path)
+parser.add_argument('--build-dir', type=Path, help='Flutter web output directory')
 args = parser.parse_args()
 if not args.namespace.replace('-', '').isalnum():
     parser.error('namespace must contain only letters, digits, and hyphens')
 root = Path(__file__).resolve().parent.parent
-build = root / 'app/build/web'
+build = args.build_dir or root / 'app/build/web'
+if not (build / 'index.html').is_file():
+    parser.error(f'Flutter web output is missing: {build}')
 files = sorted(p for p in build.rglob('*') if p.is_file() and p.name not in ('sw.js', 'flutter_service_worker.js') and not any(part.startswith('.') for part in p.relative_to(build).parts))
 version = hashlib.sha256(b''.join(p.read_bytes() for p in files)).hexdigest()[:16]
 assets = ['./'] + ['./' + p.relative_to(build).as_posix() for p in files]

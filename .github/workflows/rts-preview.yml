@@ -23,14 +23,14 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: app
-      - run: flutter analyze --no-fatal-infos lib/rts lib/main.dart
+      - run: flutter analyze --no-fatal-infos lib/rts lib/frontier lib/main.dart
         working-directory: app
-      - run: flutter test test/rts_map_test.dart
+      - run: flutter test test/rts_map_test.dart test/frontier_test.dart
         working-directory: app
       - name: Build RTS web preview
         working-directory: app
         run: |
-          BUILD_NUMBER="$(git rev-list --count HEAD)"
+          BUILD_NUMBER="$(git rev-list --count abeceed8ced20fe8f48bf0caed1a0622e818c76c..HEAD)"
           flutter build web --release --dart-define=BUILD_NUMBER="$BUILD_NUMBER" --base-href /LandMine_Web/rts/ --pwa-strategy=none --no-web-resources-cdn
       - name: Generate isolated RTS offline cache
         run: python3 scripts/service_worker.py --namespace rts-preview --output app/build/web/sw.js
