@@ -21,11 +21,15 @@ void main() {
       expect(find.text('황금의 철마'), findsOneWidget);
       expect(find.text('공격'), findsOneWidget);
       expect(find.text('구르기'), findsOneWidget);
+      expect(tester.takeException(), isNull);
       await tester.tap(find.text('방어 봇 배치'));
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
       await tester.tap(find.text('탑 1번 광맥'));
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
       await tester.tap(find.byKey(const ValueKey('deploy-bot')));
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
       expect(find.text('탑 1/3'), findsOneWidget);
       expect(tester.takeException(), isNull);

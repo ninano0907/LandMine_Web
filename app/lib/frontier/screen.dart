@@ -399,9 +399,16 @@ class _FrontierScreenState extends State<FrontierScreen>
         children: [
           Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
-          Text(detail, style: const TextStyle(fontSize: 9)),
+          Text(
+            detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 9),
+          ),
         ],
       ),
     ),
