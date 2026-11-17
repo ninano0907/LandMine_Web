@@ -1,10 +1,27 @@
 {
-  "id": "./", "name": "광맥 · 사람과 수레의 시대", "short_name": "광맥",
-  "lang": "ko", "start_url": "./", "scope": "./", "display": "standalone",
-  "orientation": "landscape", "background_color": "#ede5d2", "theme_color": "#473b2b",
-  "description": "탐사, 채굴, 레일 운송과 금 판매를 즐기는 광산 경영 게임",
+  "id": "./",
+  "name": "황금의 철마 · 서부 채굴 디펜스",
+  "short_name": "황금의 철마",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#f3e2be",
+  "theme_color": "#334e46",
+  "description": "거대 채굴 로봇을 지키며 금광을 개척하는 서부 스팀펑크 디펜스",
   "icons": [
-    {"src":"icons/Icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"icons/Icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {
+      "src": "icons/Icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/Icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

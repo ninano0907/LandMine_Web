@@ -59,6 +59,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/models/
     - assets/units/1900/
     - assets/units/1900/infantry/
     - assets/buildings/command_center_open.png

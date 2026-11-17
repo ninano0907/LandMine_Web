@@ -23,9 +23,9 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: app
-      - run: flutter analyze --no-fatal-infos lib/rts lib/main.dart
+      - run: flutter analyze --no-fatal-infos lib/rts lib/frontier lib/main.dart
         working-directory: app
-      - run: flutter test test/rts_map_test.dart
+      - run: flutter test test/rts_map_test.dart test/frontier_test.dart
         working-directory: app
       - name: Build RTS web preview
         working-directory: app

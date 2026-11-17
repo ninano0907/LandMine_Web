@@ -2,6 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'mission_map.dart';
 
+// Chunky, readable mobile characters: 45 × 58 logical pixels at map scale.
+const double _characterScale = 1.8;
+
+bool _hitsCharacter(Offset position, Offset point) {
+  final local = (point - position) / _characterScale;
+  // Include the raised body and a little padding for touch input.
+  return local.dx.abs() <= 17 && local.dy >= -29 && local.dy <= 13;
+}
+
 enum UnitSize { small, medium, large }
 
 enum AttackType { antiLarge, antiSmall, balanced }
@@ -592,9 +601,9 @@ class _RtsState extends State<RtsScreen> {
   }
   void command(Offset at){
     final p=at+camera;
-    final hits=soldiers.where((s)=>(s.p-p).distance<22);
+    final hits=soldiers.where((s)=>_hitsCharacter(s.p,p));
     if(hits.isNotEmpty){setState((){selectedBase=null;selectedBarracks=null;chosen..clear()..add(hits.first);});return;}
-    final enemyHits=enemies.where((e)=>(e.p-p).distance<22);
+    final enemyHits=enemies.where((e)=>_hitsCharacter(e.p,p));
     if(enemyHits.isNotEmpty && chosen.any((u)=>u.marine)){
       setState((){for(final u in chosen.where((u)=>u.marine)){u.attackTarget=enemyHits.first;u.mode=CombatMode.attack;u.goal=null;}});
       return;
@@ -783,6 +792,10 @@ class _Map extends CustomPainter{
     fog.paint(c);
     for(final u in [...units,...enemies]){
       if(enemies.contains(u)&&!fog.canSee(u.p))continue;
+      c.save();
+      c.translate(u.p.dx,u.p.dy);
+      c.scale(_characterScale);
+      c.translate(-u.p.dx,-u.p.dy);
       // Ground rings are flattened ellipses; units rise above their footprints.
       if(selected.contains(u)){
         p..color=Colors.lightGreenAccent..style=PaintingStyle.stroke..strokeWidth=2;
@@ -798,6 +811,7 @@ class _Map extends CustomPainter{
       p.color=u.hp>40?Colors.lightGreenAccent:Colors.orangeAccent;
       c.drawRect(Rect.fromLTWH(u.p.dx-15,u.p.dy-23,30*(u.hp.clamp(0,100)/100),4),p);
       label(c,u.marine?'B':'G',u.p+const Offset(-5,-8),Colors.black);
+      c.restore();
     }
     c.restore();
     if(start!=null&&end!=null){
