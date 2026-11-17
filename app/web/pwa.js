@@ -64,9 +64,29 @@ async function startLocalGame() {
 if (localGame) {
   startLocalGame().catch(error => { console.error(error); startGame(); });
 } else {
-  // An unavailable offline cache must never block the deployed game.
+  // Start immediately; a failed or offline service worker must not block play.
   startGame();
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(console.error);
+    let reloadingForUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      // An updated worker owns a new asset cache. Reload to use that build.
+      if (!reloadingForUpdate) {
+        reloadingForUpdate = true;
+        location.reload();
+      }
+    });
+    navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'})
+      .then(registration => {
+        registration.update().catch(console.error);
+        window.addEventListener('pageshow', () => {
+          registration.update().catch(console.error);
+        });
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update().catch(console.error);
+          }
+        });
+      })
+      .catch(console.error);
   }
 }
