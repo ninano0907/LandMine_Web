@@ -383,7 +383,7 @@ class _FrontierScreenState extends State<FrontierScreen>
     VoidCallback? onTap,
   ) => SizedBox(
     width: 130,
-    height: 46,
+    height: 52,
     child: FilledButton.tonalIcon(
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 9),
