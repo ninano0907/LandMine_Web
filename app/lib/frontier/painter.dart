@@ -1,7 +1,7 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'simulation.dart';
-import 'robot_3d.dart';
 import 'defense.dart';
 
 const sand = Color(0xffe8c88c);
@@ -10,6 +10,29 @@ const brass = Color(0xffd8a650);
 const teal = Color(0xff447e77);
 
 class FrontierPainter extends CustomPainter {
+  // Temporary shared visual: all actors use the miner walk atlas.
+  // 8 directions (rows) x 8 frames (columns), loaded once in FrontierScreen.
+  static ui.Image? testMinerSprite;
+
+  void testMiner(Canvas canvas, Offset at, {double width = 48, double height = 60}) {
+    final image = testMinerSprite;
+    if (image == null) {
+      final fallbackPaint = Paint()..color = const Color(0xffc3944e);
+      canvas.drawOval(Rect.fromCenter(center: at + Offset(0, -height / 2),
+          width: width * .7, height: height * .85), fallbackPaint);
+      return;
+    }
+    final cellW = image.width / 8.0;
+    final cellH = image.height / 8.0;
+    final frame = (game.elapsed * 9).floor() % 8;
+    const southRow = 2;
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(frame * cellW, southRow * cellH, cellW, cellH),
+      Rect.fromLTWH(at.dx - width / 2, at.dy - height, width, height),
+      Paint()..filterQuality = FilterQuality.low,
+    );
+  }
   FrontierPainter(this.game, this.camera, this.zoom);
   final FrontierGame game;
   final Offset camera;
@@ -711,125 +734,26 @@ class FrontierPainter extends CustomPainter {
   }
 
   void cowboy(Canvas c, Offset at, bool hostile, double hp) {
-    c.save();
-    c.translate(at.dx, at.dy);
-    // 40 logical pixels high; the machine is several times larger.
-    oval(c, const Offset(2, 3), 30, 12, const Color(0x33725036));
-    final bob = math.sin(game.elapsed * 7 + at.dx) * .8;
-    c.translate(0, bob);
-    line(c, const Offset(-5, -3), const Offset(-6, -11), ink, 6);
-    line(c, const Offset(5, -3), const Offset(6, -11), ink, 6);
-    shadedBox(
-      c,
-      const Rect.fromLTWH(-11, -25, 22, 18),
-      hostile ? const Color(0xffa6533e) : const Color(0xff98704a),
-      6,
-    );
-    line(
-      c,
-      const Offset(-11, -20),
-      const Offset(-15, -12),
-      hostile ? const Color(0xffa6533e) : const Color(0xff98704a),
-      5,
-    );
-    line(c, const Offset(10, -19), const Offset(19, -19), ink, 4);
-    line(
-      c,
-      const Offset(18, -20),
-      const Offset(26, -20),
-      const Color(0xff7c8783),
-      3,
-    );
-    shadedOval(c, const Offset(0, -30), 19, 19, const Color(0xffefbc83));
-    shadedBox(
-      c,
-      const Rect.fromLTWH(-7, -27, 14, 5),
-      hostile ? const Color(0xff844439) : const Color(0xffdcaf57),
-      2,
-    );
-    oval(
-      c,
-      const Offset(0, -37),
-      32,
-      9,
-      hostile ? const Color(0xff654436) : const Color(0xff8e6540),
-    );
-    shadedBox(
-      c,
-      const Rect.fromLTWH(-10, -46, 20, 12),
-      hostile ? const Color(0xff654436) : const Color(0xffb4874c),
-      4,
-    );
-    line(
-      c,
-      const Offset(-8, -37),
-      const Offset(8, -37),
-      const Color(0xffd6ab64),
-      2,
-    );
-    oval(c, const Offset(-4, -30), 1.8, 2.2, const Color(0xff594333));
-    oval(c, const Offset(4, -30), 1.8, 2.2, const Color(0xff594333));
-    if (!hostile) oval(c, const Offset(-5, -19), 4, 4, const Color(0xffffdc7a));
-    if (hp < 100 && !hostile) {
-      shadedBox(c, const Rect.fromLTWH(-15, -55, 30, 4), ink, 2);
-      shadedBox(
-        c,
-        Rect.fromLTWH(-15, -55, 30 * (hp / 100).clamp(0, 1), 4),
-        const Color(0xff8ed2a2),
-        2,
-      );
+    testMiner(c, at);
+    if (hp < 100) {
+      final top = at + const Offset(0, -65);
+      box(c, Rect.fromCenter(center: top, width: 42, height: 4), ink, 2);
+      box(c, Rect.fromLTWH(top.dx - 20, top.dy - 1, 40 * (hp / 100).clamp(0, 1), 2),
+          hostile ? const Color(0xffd66e4a) : const Color(0xffd4bf83), 1);
     }
-    c.restore();
   }
 
   void defenseBot(Canvas c, DefenseVein site) {
     final bot = site.bot!;
     final at = bot.position;
-    p
-      ..color = const Color(0x44695136)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
-    c.drawOval(Rect.fromCenter(center: at, width: 125, height: 62), p);
-    p.maskFilter = null;
-    final model = RobotModel.cached;
-    if (model == null) {
-      text(c, '봇 이동 중', at, size: 10);
-      return;
-    }
-    final moving = !game.defense.isDocked(site);
-    final heading = moving ? RobotModel.headingFor(bot.direction) : 0.0;
-    final target = game.defense.closestEnemy(at, 335);
-    final gunYaw = target == null
-        ? 0.0
-        : RobotModel.headingFor(target.position - at);
-    final bounds = model.paint(
-      c,
-      at,
-      modelScale: .5,
-      yaw: heading,
-      gunYaw: gunYaw,
-      clip: moving
-          ? 'Walk'
-          : site.ore > 0
-          ? 'Mine'
-          : 'Idle',
-      poseTime: moving
-          ? RobotModel.walkSeconds(bot.walkTime, heading, .5)
-          : bot.mineTime,
-    );
-    final top = Offset(bounds.center.dx, bounds.top - 6);
+    testMiner(c, at, width: 74, height: 90);
+    final top = at + const Offset(0, -95);
     box(c, Rect.fromCenter(center: top, width: 64, height: 4), ink, 2);
-    box(
-      c,
-      Rect.fromLTWH(top.dx - 31, top.dy - 1, 62 * bot.hp / bot.maxHp, 2),
-      const Color(0xffe4c271),
-      1,
-    );
-    text(
-      c,
-      '${DefenseWorld.laneNames[site.lane]} Lv.${bot.level}',
-      top + const Offset(0, -15),
-      size: 10,
-    );
+    box(c, Rect.fromLTWH(top.dx - 31, top.dy - 1,
+        62 * (bot.hp / bot.maxHp).clamp(0, 1), 2),
+        const Color(0xffe4c271), 1);
+    text(c, '${DefenseWorld.laneNames[site.lane]} Lv.${bot.level}',
+        top + const Offset(0, -15), size: 10);
   }
 
   void rescueCamp(Canvas c, RescueCamp camp) {
@@ -1069,64 +993,17 @@ class FrontierPainter extends CustomPainter {
   }
 
   void machine(Canvas c) {
-    final contact = game.robot + FrontierGame.drillContact;
-    p
-      ..color = const Color(0x5360472e)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-    c.drawOval(
-      Rect.fromCenter(
-        center: contact + const Offset(0, -8),
-        width: 240,
-        height: 100,
-      ),
-      p,
-    );
-    p.maskFilter = null;
-    final model = RobotModel.cached;
-    if (model == null) {
-      text(c, '3D 모델 준비 중', contact + const Offset(0, -45), size: 12);
-      return;
-    }
-    final clip = game.moving
-        ? 'Walk'
-        : game.mining
-        ? 'Mine'
-        : 'Idle';
-    final bounds = model.paint(
-      c,
-      contact,
-      clip: clip,
-      poseTime: game.moving
-          ? game.robotWalkTime
-          : game.mining
-          ? game.robotMineTime
-          : game.elapsed,
-    );
-    final bar = Offset(bounds.center.dx, bounds.top - 10);
-    box(
-      c,
-      Rect.fromCenter(center: bar, width: 100, height: 6),
-      const Color(0xff5b4939),
-      3,
-    );
-    box(
-      c,
-      Rect.fromLTWH(bar.dx - 48, bar.dy - 1, 96 * game.hull / 1200, 2),
-      const Color(0xffd4bf83),
-      1,
-    );
-    text(c, '철마 01', bar + const Offset(0, -20), size: 12);
-    // Steam is a lightweight atmospheric overlay; the machine is 3D geometry.
-    for (var i = 0; i < 3; i++) {
-      final phase = (game.elapsed * .45 + i * .33) % 1;
-      oval(
-        c,
-        Offset(bounds.center.dx + 17 + phase * 12, bounds.top - 5 - phase * 36),
-        10 + phase * 16,
-        8 + phase * 14,
-        Color.fromRGBO(255, 245, 217, (1 - phase) * .4),
-      );
-    }
+    final at = game.robot + FrontierGame.drillContact;
+    // Large miner placeholder instead of per-frame 3D geometry rendering.
+    testMiner(c, at, width: 150, height: 190);
+    final bar = at + const Offset(0, -204);
+    box(c, Rect.fromCenter(center: bar, width: 100, height: 6),
+        const Color(0xff5b4939), 3);
+    box(c, Rect.fromLTWH(bar.dx - 48, bar.dy - 1,
+        96 * (game.hull / 1200).clamp(0, 1), 2),
+        const Color(0xffd4bf83), 1);
+    text(c, '철마 01 (테스트 스프라이트)',
+        bar + const Offset(0, -20), size: 12);
   }
 
   @override
