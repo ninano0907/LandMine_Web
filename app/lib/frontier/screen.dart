@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,13 +33,23 @@ class _FrontierScreenState extends State<FrontierScreen>
     super.initState();
     game = widget.initialGame ?? FrontierGame();
     WidgetsBinding.instance.addObserver(this);
-    RobotModel.load()
-        .then((_) {
-          if (mounted) setState(() {});
-        })
-        .catchError((Object error) {
-          debugPrint('Robot model: $error');
-        });
+    // Load the same 8x8 walk atlas once for all temporary RTS actors.
+    rootBundle.load('assets/units/1900/engineer_walk_empty.png').then((data) async {
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      try {
+        final frame = await codec.getNextFrame();
+        if (!mounted) {
+          frame.image.dispose();
+          return;
+        }
+        FrontierPainter.testMinerSprite = frame.image;
+        setState(() {});
+      } finally {
+        codec.dispose();
+      }
+    }).catchError((Object error) {
+      debugPrint('Test miner sprite load: $error');
+    });
     timer = Timer.periodic(const Duration(milliseconds: 33), (_) {
       final now = watch.elapsedMicroseconds / 1000000;
       final dt = now - lastTime;
