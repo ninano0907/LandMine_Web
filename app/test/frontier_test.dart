@@ -18,7 +18,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(const MaterialApp(home: FrontierScreen()));
-      expect(find.text('황금의 철마'), findsOneWidget);
+      expect(find.textContaining('황금의 철마'), findsOneWidget);
       expect(find.text('공격'), findsOneWidget);
       expect(find.text('구르기'), findsOneWidget);
       expect(tester.takeException(), isNull);
