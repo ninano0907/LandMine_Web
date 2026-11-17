@@ -239,6 +239,9 @@ class FrontierPainter extends CustomPainter {
         90 + decor.nextDouble() * 2220,
       );
       final type = i % 5;
+      // Consume random values for every decoration, even when off-screen.
+      // Otherwise camera movement changes the random sequence and positions.
+      final variation = decor.nextDouble();
       if (!visible.contains(at) ||
           game.sites.take(1).any((s) => (s.position - at).distance < 220) ||
           game.defense.veins.any((v) => (v.position - at).distance < 145) ||
@@ -253,9 +256,9 @@ class FrontierPainter extends CustomPainter {
         continue;
       }
       if (type == 0) {
-        cactus(c, at, .7 + decor.nextDouble() * .6);
+        cactus(c, at, .7 + variation * .6);
       } else if (type == 1) {
-        rock(c, at, 35 + decor.nextDouble() * 28);
+        rock(c, at, 35 + variation * 28);
       } else if (type == 2) {
         oval(c, at + const Offset(2, 4), 40, 16, const Color(0x227c6139));
         for (var j = 0; j < 5; j++) {
