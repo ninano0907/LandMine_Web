@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'defense.dart';
 import 'painter.dart';
-import 'robot_3d.dart';
 import 'robot_studio.dart';
 import 'simulation.dart';
 
