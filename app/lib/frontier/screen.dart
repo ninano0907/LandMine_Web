@@ -789,7 +789,7 @@ class _FrontierScreenState extends State<FrontierScreen>
         const Icon(Icons.settings, size: 22, color: Color(0xffdfbd78)),
         const SizedBox(width: 7),
         const Text(
-          '황금의 철마',
+          '황금의 철마 ${String.fromEnvironment('BUILD_NUMBER', defaultValue: '1')}',
           style: TextStyle(
             color: Color(0xffffebc1),
             fontSize: 15,
