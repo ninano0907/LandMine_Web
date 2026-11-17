@@ -986,7 +986,8 @@ class _MoveStickState extends State<_MoveStick> {
   }
 
   @override
-  Widget build(BuildContext context) => Listener(
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: Listener(
     key: const ValueKey('hero-stick'),
     behavior: HitTestBehavior.opaque,
     onPointerDown: (e) {
@@ -1037,6 +1038,7 @@ class _MoveStickState extends State<_MoveStick> {
           ),
         ),
       ),
+    ),
     ),
   );
 }
