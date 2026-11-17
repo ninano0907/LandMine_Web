@@ -78,6 +78,7 @@ class _FrontierScreenState extends State<FrontierScreen>
         state == AppLifecycleState.paused) {
       // A WebView swipe-to-dismiss can briefly change lifecycle state.
       // Release pressed controls, but do not pause the game.
+      // Keep the preview active when an embedded WebView briefly loses focus.
       clearInputs();
     }
   }
