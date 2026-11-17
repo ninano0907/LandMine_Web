@@ -77,8 +77,9 @@ class _FrontierScreenState extends State<FrontierScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
+      // A WebView swipe-to-dismiss can briefly change lifecycle state.
+      // Release pressed controls, but do not pause the game.
       clearInputs();
-      if (mounted) setState(() => game.paused = true);
     }
   }
 
