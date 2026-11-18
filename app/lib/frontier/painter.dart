@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'simulation.dart';
 import 'defense.dart';
-import 'spider_rig.dart';
 
 const sand = Color(0xffe8c88c);
 const ink = Color(0xff513d30);
@@ -1114,18 +1113,7 @@ class FrontierPainter extends CustomPainter {
 
   void machine(Canvas c) {
     final at = game.robot + FrontierGame.drillContact;
-    final clip = game.moving
-        ? 'Walk'
-        : game.mining
-        ? 'Mine'
-        : 'Idle';
-    final time = game.moving ? game.robotWalkTime : game.robotMineTime;
-    final rig = SpiderRig.cached;
-    if (rig != null) {
-      rig.paint(c, at, clip: clip, seconds: time, scale: .20);
-    } else {
-      testMiner(c, at, width: 150, height: 190);
-    }
+    testMiner(c, at, width: 150, height: 190);
     final bar = at + const Offset(0, -204);
     box(
       c,

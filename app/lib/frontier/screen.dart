@@ -6,7 +6,6 @@ import 'package:flutter/scheduler.dart';
 import 'defense.dart';
 import 'painter.dart';
 import 'robot_studio.dart';
-import 'spider_rig.dart';
 import 'simulation.dart';
 
 class FrontierScreen extends StatefulWidget {
@@ -38,13 +37,6 @@ class _FrontierScreenState extends State<FrontierScreen>
     game = widget.initialGame ?? FrontierGame();
     WidgetsBinding.instance.addObserver(this);
     loadTerrain();
-    SpiderRig.load()
-        .then((_) {
-          if (mounted) setState(() {});
-        })
-        .catchError((Object error) {
-          debugPrint('Spider artwork: $error');
-        });
     // Load the same 8x8 walk atlas once for all temporary RTS actors.
     rootBundle
         .load('assets/units/1900/engineer_walk_empty.png')

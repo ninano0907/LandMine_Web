@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:math' as math;
-import 'spider_rig.dart';
+import 'robot_3d.dart';
 
 class RobotStudio extends StatefulWidget {
   const RobotStudio({super.key});
@@ -21,9 +21,13 @@ class _RobotStudioState extends State<RobotStudio>
   @override
   void initState() {
     super.initState();
-    SpiderRig.load().then((_) {
-      if (mounted) setState(() {});
-    });
+    RobotModel.load()
+        .then((_) {
+          if (mounted) setState(() {});
+        })
+        .catchError((Object error) {
+          debugPrint('Robot model: $error');
+        });
     ticker = createTicker((elapsed) {
       final dt = (elapsed - last).inMicroseconds / 1e6;
       last = elapsed;
@@ -115,21 +119,13 @@ class _RobotStudioPainter extends CustomPainter {
   double get time => timeProvider();
   @override
   void paint(Canvas c, Size size) {
-    final rig = SpiderRig.cached;
-    if (rig == null) return;
-    final scale =
-        math.min(
-          size.width / SpiderRig.size.width,
-          size.height / SpiderRig.size.height,
-        ) *
-        .96 *
-        zoom;
-    final at =
-        size.center(Offset.zero) +
-        (SpiderRig.contact - SpiderRig.size.center(Offset.zero)) * scale;
+    final model = RobotModel.cached;
+    if (model == null) return;
+    final scale = math.min(size.width / 360, size.height / 300) * zoom;
+    final at = Offset(size.width * .5, size.height * .65);
     c.save();
     c.clipRect(Offset.zero & size);
-    rig.paint(c, at, clip: clip, seconds: time, scale: scale);
+    model.paint(c, at, clip: clip, poseTime: time, modelScale: scale);
     c.restore();
   }
 
